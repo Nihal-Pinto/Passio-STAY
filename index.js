@@ -44,7 +44,6 @@ async function initialise(){
     document.getElementById('stopsButton').addEventListener('click', stillLoading.bind(tempScope));
     document.getElementById('alertsButton').addEventListener('click', stillLoading.bind(tempScope));
     document.getElementById('busesButton').addEventListener('click', stillLoading.bind(tempScope));
-    //$.get("https://api.ipify.org", {}, function(data) {console.log(data);});
     var deviceId = (Math.floor(Math.random()*(10**8))).toString()
     
     await $.post("https://passio3.com/www/mapGetData.php?getRoutes=1&deviceId="+deviceId+"&wTransloc=1",
@@ -90,12 +89,11 @@ async function initialise(){
     var userAgent = navigator.userAgent;    
     if(userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('Android')){
         $("#stylesheet").attr("href", "styleMobile.css");
-        console.log("mobile");
+        console.info("mobile");
     }else{
-        console.log("pc");
+        console.info("pc");
     }
     map.on('zoomend', fixSizes.bind(this));
-    console.log('hi');
 };
 
 function setRoutes(what){
@@ -158,7 +156,6 @@ function loadRoutes(){
             }
         }
     }
-    console.log(temp);
     this.routes = temp;
     for(let i = 0; i<this.routes.length; i++){
         current.append(document.createElement("div"));
@@ -170,7 +167,7 @@ function loadRoutes(){
         let nam = this.routes[i].nameOrig;
         current.lastChild.lastChild.onclick = function() {selectRoute(nam)}.bind(this);
         current.lastChild.style.borderColor = this.routes[i].color;
-        current.lastChild.addEventListener('click', function(){console.log(i); showRoute(this.routes[i].nameOrig);}.bind(this));
+        current.lastChild.addEventListener('click', function(){showRoute(this.routes[i].nameOrig);}.bind(this));
         this.routesReal[this.routes[i].nameOrig] = {
             id: this.routes[i].myid.toString(),
             short: this.routes[i].shortName,
@@ -194,7 +191,6 @@ function loadRoutes(){
         let nam = this.inactiveRoutes[i].nameOrig;
         current.lastChild.lastChild.onclick = function() {selectRoute(nam)}.bind(this);
         current.lastChild.style.borderColor = this.inactiveRoutes[i].color;
-        console.log(current.lastChild);
         current.lastChild.addEventListener('click', function(){showRoute(this.inactiveRoutes[i].nameOrig)}.bind(this));
         this.routesReal[this.inactiveRoutes[i].nameOrig] = {
             id: this.inactiveRoutes[i].myid.toString(),
@@ -279,7 +275,7 @@ function loadStops(){
                 servicedByRoute += "| " + route + " |";
             }
         }
-        current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh';>" + servicedByRoute + "</p>";
+        current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
     }
     for(var stop of Object.keys(stopsReal)){
         if(stopsReal[stop].routes != [])
@@ -306,14 +302,11 @@ function loadAlerts(){
 }
 
 function showRoute(which){
-    console.log('cock');
-    if(document.getElementById(which).lastChild.style.display === "none"){
-        $(document.getElementById(which).lastChild).show();
-    } else{
-        $(document.getElementById(which).lastChild).hide();
-    }
+    let toEdit = document.getElementById(which).lastChild;
+    console.log(toEdit.style.display === "none");
+    $(toEdit).toggle();
 }
-
+    
 function selectRoute(which){
     var box = $(document.getElementById(which)).find('[class="routeSelector"]')[0];
     if(Object.keys(selectedRoutes).includes(which)){
@@ -337,7 +330,6 @@ function displayRoutes(){
         }
     }
     for(var toShow of Object.keys(this.selectedRoutes)){
-        console.log(toShow);
         map.addSource(this.selectedRoutes[toShow].full, {
             'type': 'geojson',
             'data': {
@@ -350,12 +342,10 @@ function displayRoutes(){
             }
         });
         var color = this.selectedRoutes[toShow].color;
-        console.log(color);
         var red = lighten(parseInt(color.substring(1, 3), 16));
         var green = lighten(parseInt(color.substring(3, 5), 16));
         var blue = lighten(parseInt(color.substring(5, 7), 16));
         color = RGBtoHex(red, green, blue);
-        console.log(color);
         map.addLayer({
             'id': this.selectedRoutes[toShow].full+"bg",
             'type': 'line',
@@ -414,14 +404,14 @@ function lighten(what){
 
 function renderRoute(routeName){
     var newNode = document.getElementById(routeName).appendChild(document.createElement('div'))
-    $(newNode).hide();
-    var inner = "<ol>\n";
+    var inner = "<ol style='font-weight: lighter; font-size: 2.25vh'>\n";
     var paath = this.routesReal[routeName].path;
     for(var stop of paath){
         inner += "<li>" + this.stopsHashMap[stop[1]] + "</li>";
     }
     inner += '</ol>';
     newNode.innerHTML = inner;
+    $(newNode).hide();
 }
 
 function renderCircle(routeList, stopName){
