@@ -142,7 +142,7 @@ function updateBuses(){
 }
 
 function loadRoutes(){
-    var current = $("#routesList").find('[class="popupList"]')[0];
+    let current = $("#routesList").find('[class="popupList"]')[0];
     var temp = [];
     this.routes.sort(function(a, b){
         return a['nameOrig'].localeCompare(b['nameOrig']);
@@ -165,9 +165,11 @@ function loadRoutes(){
         current.lastChild.append(document.createElement('div'));
         current.lastChild.lastChild.className = 'routeSelector';
         let nam = this.routes[i].nameOrig;
-        current.lastChild.lastChild.onclick = function() {selectRoute(nam)}.bind(this);
         current.lastChild.style.borderColor = this.routes[i].color;
-        current.lastChild.addEventListener('click', function(){showRoute(this.routes[i].nameOrig);}.bind(this));
+        let hihi = current.lastChild.lastChild;
+        let hi = current.lastChild;
+        hihi.addEventListener('click', function(e){console.log(e.target); selectRoute(nam)}.bind(this));
+        hi.addEventListener("click", function(e) {if(hi === e.target) {showRoute(this.routes[i].nameOrig)}}.bind(this));
         this.routesReal[this.routes[i].nameOrig] = {
             id: this.routes[i].myid.toString(),
             short: this.routes[i].shortName,
@@ -189,9 +191,11 @@ function loadRoutes(){
         current.lastChild.append(document.createElement('div'));
         current.lastChild.lastChild.className = 'routeSelector';
         let nam = this.inactiveRoutes[i].nameOrig;
-        current.lastChild.lastChild.onclick = function() {selectRoute(nam)}.bind(this);
         current.lastChild.style.borderColor = this.inactiveRoutes[i].color;
-        current.lastChild.addEventListener('click', function(){showRoute(this.inactiveRoutes[i].nameOrig)}.bind(this));
+        let hihi = current.lastChild.lastChild;
+        let hi = current.lastChild;
+        hihi.addEventListener('click', function(e){console.log(e.target); selectRoute(nam)}.bind(this));
+        hi.addEventListener("click", function(e) {if(hi === e.target) {showRoute(this.inactiveRoutes[i].nameOrig)}}.bind(this));
         this.routesReal[this.inactiveRoutes[i].nameOrig] = {
             id: this.inactiveRoutes[i].myid.toString(),
             short: this.inactiveRoutes[i].shortName,
@@ -204,7 +208,7 @@ function loadRoutes(){
             active: false,
             color: this.inactiveRoutes[i].color
         };
-    }
+    };
     for(var el of document.getElementsByClassName('route')){
         el.onclick = function(){
             $(el.lastChild).show();
@@ -266,7 +270,7 @@ function loadStops(){
     for(var inactive of inactiveRoutes){
         inactiveNames.push(inactive.nameOrig);
     }
-    for(var i = 0; i<keys.length; i++){
+    for(let i = 0; i<keys.length; i++){
         current.append(document.createElement("div"));
         current.lastChild.className = stopItem;
         servicedByRoute = "";
@@ -276,6 +280,7 @@ function loadStops(){
             }
         }
         current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
+        current.lastChild.addEventListener('click', function(){showStopOnMap(keys[i])})
     }
     for(var stop of Object.keys(stopsReal)){
         if(stopsReal[stop].routes != [])
@@ -303,8 +308,8 @@ function loadAlerts(){
 
 function showRoute(which){
     let toEdit = document.getElementById(which).lastChild;
-    console.log(toEdit.style.display === "none");
-    $(toEdit).toggle();
+    console.log(toEdit.style.display === "block");
+    $(toEdit).slideToggle();
 }
     
 function selectRoute(which){
@@ -407,7 +412,7 @@ function renderRoute(routeName){
     var inner = "<ol style='font-weight: lighter; font-size: 2.25vh'>\n";
     var paath = this.routesReal[routeName].path;
     for(var stop of paath){
-        inner += "<li>" + this.stopsHashMap[stop[1]] + "</li>";
+        inner += `<li onclick='showStopOnMap("${this.stopsHashMap[stop[1]]}")'>` + this.stopsHashMap[stop[1]] + "</li>";
     }
     inner += '</ol>';
     newNode.innerHTML = inner;
@@ -415,13 +420,31 @@ function renderRoute(routeName){
 }
 
 function renderCircle(routeList, stopName){
+    let routList = []
+    let inRoutes = []
+    for(var inRoute of this.inactiveRoutes){
+        inRoutes.push(inRoute.nameOrig)
+    }
+    for(var rout of routeList){
+        if(inRoutes.includes(rout)){
+            {}
+        } else{
+            routList.push(rout);
+        }
+    }
     let svg = document.createElement('div');
     svg.className = 'stopMarker';
     svg.id = 'stop: '+stopName;
     let inner = '';
-    for(var i = 0; i<routeList.length; i++){
-        inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "${routesReal[routeList[i]].color}" stroke="#FFFFFF" stroke-width="0.3em">\n`
-        inner += "<path d='"+arc({x:0,y:0,r:50,start:((360/routeList.length)*i), end:((360/routeList.length)*(i+1))})+"'></path>\n";
+    if(routList.length > 0){
+        for(var i = 0; i<routList.length; i++){
+            inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "${routesReal[routList[i]].color}" stroke="#FFFFFF" stroke-width="0.3em">\n`
+            inner += "<path d='"+arc({x:0,y:0,r:50,start:((360/routList.length)*i), end:((360/routList.length)*(i+1))})+"'></path>\n";
+            inner += '</svg>\n';
+        }
+    }else{
+        inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "#FFFFFFF" stroke="#FFFFFF" stroke-width="0.3em">\n`
+        inner += "<path d='"+arc({x:0,y:0,r:50})+"'></path>\n";
         inner += '</svg>\n';
     }
     svg.innerHTML = inner;
@@ -431,6 +454,13 @@ function renderCircle(routeList, stopName){
 
 function showStopDetails(stopName){
 
+}
+
+function showStopOnMap(stopName){
+    $("#stopsList").hide();
+    $("#routesList").hide();
+    map.setCenter([this.stopsReal[stopName].long, this.stopsReal[stopName].lat])
+    map.setZoom(16);
 }
 
 // --------------------------------------------------------------------------
