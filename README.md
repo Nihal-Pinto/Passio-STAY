@@ -6,10 +6,10 @@
 2. click on a stop in "routes" takes you to the stop
 3. click on a stop in "stops" takes you to the stop
 4. buses
-4.1. sorted by route
-4.2. search numbers
-4.3. click on a bus takes you to the bus
-4.4. click on a bus in the map displays its details
+    1. sorted by route
+    2. search numbers
+    3. click on a bus takes you to the bus
+    4. click on a bus in the map displays its details
 5. popup for clicking on a stop in the map
 6. **SHOW BUSES ON MAP**
 
