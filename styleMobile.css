@@ -12,6 +12,7 @@ html,body {
 }
 
 #logo{
+    display: none;
     background-color: red;
     position: absolute;
     top: 0px;
@@ -20,7 +21,7 @@ html,body {
     height: 3.7vh;
     font-size: 2vh;
     color: white;
-    padding-top: 1.3vh;
+    padding-top: calc(1.3vh + 4px);
     padding-left: 1.3vh;
 }
 
@@ -28,9 +29,9 @@ html,body {
     background-color: rgba(255,255,255,0.5);
     position: absolute;
     top: 0px;
-    right: 0px;
-    width: 20vh;
-    height: calc(5% - 4px);
+    left: calc(2.5% - 2px);
+    width: 95%;
+    height: 5vh;
     border-radius: 10px;
     display: flex;
     flex-direction: row;
@@ -40,7 +41,8 @@ html,body {
 }
 
 .SVGcontainer{
-    width: calc(100%/3);
+    height: 100%;
+    width: 25%;
 }
 
 .SVGcontainer:hover{
@@ -49,8 +51,8 @@ html,body {
 
 .SVGicon{
     height: 80%;
-    width: 80%;
-    padding: 10%;
+    width: 100%;
+    margin: 4%;
 }
 
 .popup{
