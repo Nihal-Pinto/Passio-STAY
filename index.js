@@ -246,12 +246,6 @@ function loadStops(){
             }
         }
     }
-    keys = Object.keys(this.stopsReal);
-    for(var key of keys){
-        if(this.stopsReal[key].routes.length === 0){
-            delete this.stopsReal[key];
-        }
-    }
     keys = Object.keys(this.routesReal);
     for(var key of keys){
         var subkeys = Object.keys(this.stops.routePoints);
