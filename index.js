@@ -32,6 +32,12 @@ var errorMessage = "PassioGO! is being slow :)\nIt's still loading.";
 
 function stillLoading() { alert(this.errorMessage) };
 
+function failure() {
+    $("#status").show();
+    this.errorMessage = 'Passio servers dead, ggwp :(';
+    document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>We Don't Know Why</h3></br>But basically their service is down.</div>`;
+}
+
 async function initialise() {
     $.ajaxSetup({
         type: 'POST',
@@ -52,36 +58,57 @@ async function initialise() {
         function (data) {
             if (Object.keys(JSON.parse(data)).includes('error')) {
                 this.errorMessage = "Passio servers dead, ggwp :(";
-                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>${JSON.parse(data)['error']}</div>`
+                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
                 return;
             }
             setRoutes(JSON.parse(data));
             loadRoutes();
-        }).fail(function () { this.errorMessage = 'Passio servers dead, ggwp :('; document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>We Don't Know Why</h3></br>But basically their service is down.</div>`}.bind(this));
+        }).fail(failure.bind(this));
     await $.post("https://passio3.com/www/mapGetData.php?getStops=1&deviceId=" + deviceId + "&wTransloc=1",
         { json: '{"s0":"1268","sA":1}' },
         function (data) {
+            if (Object.keys(JSON.parse(data)).includes('error')) {
+                this.errorMessage = "Passio servers dead, ggwp :(";
+                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
+                return;
+            }
             setStops(JSON.parse(data));
             loadStops();
-        });
+        }).fail(failure.bind(this));
     await $.post("https://passio3.com/www/goServices.php?getAlertMessages=1&deviceId=" + deviceId,
         { json: '{"systemSelected0":"1268", "amount":1}' },
         function (data) {
+            if (Object.keys(JSON.parse(data)).includes('error')) {
+                this.errorMessage = "Passio servers dead, ggwp :(";
+                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
+                return;
+            }
             setAlerts(JSON.parse(data));
             loadAlerts();
-        });
+        }).fail(failure.bind(this));
     await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
         { json: '{"s0":"1268","sA":1}' },
         function (data) {
+            if (Object.keys(JSON.parse(data)).includes('error')) {
+                this.errorMessage = "Passio servers dead, ggwp :(";
+                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
+                return;
+            }
             setBusesFirst(JSON.parse(data));
-        });
+        }).fail(failure.bind(this));
+    await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
+        { json: '{"s0":"1268","sA":1}' },
+        function (data) {
+            setBuses(JSON.parse(data));
+            updateBuses();
+        }).fail(failure.bind(this));
     setInterval(async function () {
         await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
             { json: '{"s0":"1268","sA":1}' },
             function (data) {
                 setBuses(JSON.parse(data));
                 updateBuses();
-            });
+            }).fail(failure.bind(this));
     }, 10000);
 
     document.getElementById('routesButton').replaceWith(document.getElementById('routesButton').cloneNode(true));
@@ -192,7 +219,8 @@ var busMarkers = {};
 
 function updateBuses() {
     for (var bus of Object.keys(this.busesReal).toSorted()) {
-        if (this.busesReal[bus].active || Object.keys(this.routes).includes(usesReal[bus].route)) {
+        if (this.busesReal[bus].active || Object.keys(this.routes).includes(busesReal[bus].route)) {
+            this.routesReal[busesReal[bus].route].buses.push(bus);
             if (document.getElementById("bus" + bus) === null) {
                 let div = document.createElement('div');
                 div.id = "bus" + bus;
@@ -210,12 +238,20 @@ function updateBuses() {
                 busMarkers[bus][0].setLngLat(this.busesReal[bus].position)
                 busMarkers[bus][0].addTo(map);
             } else {
-                for (let marker of Object.keys(busMarkers)) {
-                    this.busMarkers[marker][1] = generateMovement([marker.getLngLat().lng, marker.getLngLat().lat] , this.busesReal[bus].position);
-                }
-                requestAnimationFrame(animateMarker);
+                this.busMarkers[bus][1] = generateMovement([this.busMarkers[bus][0].getLngLat().lng, this.busMarkers[bus][0].getLngLat().lat], this.busesReal[bus].position);
             }
+            this.frame = 0;
+            console.log('joever');
+            schmooveBus(bus, busMarkers[bus][1]);
+            document.getElementById("bus"+bus).lastChild.setAttribute("transform", `rotate(${this.routesReal[this.busesReal[bus].route].color})`);
         }
+    }
+}
+
+async function schmooveBus(bus, frames) {
+    for (let frame of frames) {
+        this.busMarkers[bus][0].setLngLat(frame);
+        await sleep(16);
     }
 }
 
@@ -409,6 +445,14 @@ function selectRoute(which) {
         box.style.backgroundColor = box.parentNode.style.borderColor;
     }
     displayRoutes();
+    for(var bus of Object.keys(this.busesReal)){
+        document.getElementById("bus"+bus).style.display = "none";
+    }
+    for(let route of Object.keys(selectedRoutes)){
+        for(var bus of this.routesReal[route].buses){
+            document.getElementById("bus"+bus).style.display = "block";
+        }
+    }
 }
 
 function displayRoutes() {
@@ -656,40 +700,22 @@ Array.prototype.removeAt = function (iIndex) {
 };
 
 function generateMovement(startPoint, endPoint) {
-    var diffX = endPoint[0] - startPoint[0];
-    var diffY = endPoint[1] - startPoint[1];
+    var speedFactor = 100;
+    var difflong = endPoint[0] - startPoint[0];
+    var difflat = endPoint[1] - startPoint[1];
 
-    var sfX = diffX / speedFactor;
-    var sfY = diffY / speedFactor;
-
-    var i = 0;
-    var j = 0;
+    var sflong = difflong / speedFactor;
+    var sflat = difflat / speedFactor;
 
     var lineCoordinates = [];
 
-    while (i < diffX || Math.abs(j) < Math.abs(diffY)) {
-        lineCoordinates.push([startPoint[0] + i, startPoint[1] + j]);
-
-        if (i < diffX) {
-            i += sfX;
-        }
-
-        if (Math.abs(j) < Math.abs(diffY)) {
-            j += sfY;
-        }
+    for (let i = 0; i < 100; i++) {
+        lineCoordinates.push([startPoint[0] + (sflong * (i + 1)), startPoint[1] + (sflat * (i + 1))])
     }
 
     return lineCoordinates;
 }
 
-function animateMarker(timestamp) {
-    for(let mark of Object.keys(this.busMarkers)){
-        marker = this.busMarkers[mark][0];
-        marker.setLngLat([
-            this.busMarkers[mark][1][parseInt(timestamp / path.length)][0],
-            this.busMarkers[mark][1][parseInt(timestamp / path.length)][1]
-        ]);
-        marker.addTo(map);
-        requestAnimationFrame(animateMarker);
-    }
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
