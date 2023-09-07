@@ -2,8 +2,8 @@
  hehehoho
 
 ## To do
-1. "show on map" button for routes
-~~2. click on a stop in "routes" takes you to the stop~~
+1. "show on map" button for routes\
+~~2. click on a stop in "routes" takes you to the stop~~\
 ~~3. click on a stop in "stops" takes you to the stop~~
 4. buses
     1. sorted by route

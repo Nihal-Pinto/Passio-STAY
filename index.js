@@ -23,6 +23,8 @@ var alertsLoaded = false;
 
 var selectedRoutes = {};
 var currentRoutes = [];
+var stopsOrdered = [];
+var hasBuses = [];
 addEventListener(map.load, initialise());
 
 var stopsHashMap = {};
@@ -68,14 +70,14 @@ async function initialise(){
             setAlerts(JSON.parse(data));
             loadAlerts();
         });
-    setInterval(async function(){
-        await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId="+deviceId+"&wTransloc=1",
-            {json:'{"s0":"1268","sA":1}'},
-            function(data){
-                setBuses(JSON.parse(data));
-                updateBuses();
-            });
-        }, 10000);
+    // setInterval(async function(){
+    //     await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId="+deviceId+"&wTransloc=1",
+    //         {json:'{"s0":"1268","sA":1}'},
+    //         function(data){
+    //             setBuses(JSON.parse(data));
+    //             updateBuses();
+    //         });
+    //     }, 10000);
          
     document.getElementById('routesButton').replaceWith(document.getElementById('routesButton').cloneNode(true));
     document.getElementById('stopsButton').replaceWith(document.getElementById('stopsButton').cloneNode(true));
@@ -137,9 +139,27 @@ function closeAll(){
     $(".popup").hide();
 }
 
-function updateBuses(){
-    return;
-}
+// function updateBuses(){
+//     var busesExclusively = this.buses['buses'];
+//     var busIds = Object.keys(busesExclusively);
+//     for(busId in busIds){
+//         let currentBus = busesExclusively[busId][0];
+//         this.busesReal[currentBus['busName']] = {
+//             num: currentBus['busName'],
+//             route: currentBus['route'],
+//             routeId: currentBus['routeId'],
+//             active: !Boolean(currentBus['outOfService']),
+//             fullness: parseInt(currentBus['paxLoad']/currentBus['totalCap']),
+//             id: currentBus['busId'],
+//             position: [currentBus['longitude'], currentBus['latitude']],
+//             bearing: currentBus['calculatedRoute']
+//         }
+//     }
+//     var toDelete = []   
+//     if(Object.keys(this.busesReal).sort() !== hasBuses.sort()){ 
+//         {}
+//     }
+// }
 
 function loadRoutes(){
     let current = $("#routesList").find('[class="popupList"]')[0];
@@ -187,7 +207,7 @@ function loadRoutes(){
         current.append(document.createElement("div"));
         current.lastChild.className = routeItem;
         current.lastChild.id = this.inactiveRoutes[i].nameOrig;
-        current.lastChild.innerHTML = "<s>"+ this.inactiveRoutes[i].nameOrig + " | " + this.inactiveRoutes[i].shortName.toUpperCase()+"</s>";
+        current.lastChild.innerHTML = this.inactiveRoutes[i].nameOrig + " | " + this.inactiveRoutes[i].shortName.toUpperCase();
         current.lastChild.append(document.createElement('div'));
         current.lastChild.lastChild.className = 'routeSelector';
         let nam = this.inactiveRoutes[i].nameOrig;
@@ -230,18 +250,22 @@ function loadStops(){
             id: this.stops['stops'][key]['id'],
             lat: this.stops['stops'][key]['latitude'],
             long: this.stops['stops'][key]['longitude'],
-            routes: []
+            routes: [],
+            full: this.stops['stops'][key]['name']
         }
         this.stopsHashMap[this.stops['stops'][key]['id']] = this.stops['stops'][key]['name'];
     }
+    this.stopsOrdered = Object.keys(this.stopsReal);
+    this.stopsOrdered.sort();
+    console.log(this.stopsOrdered);
     keys = Object.keys(this.routesReal);
     for(var key of keys){
         for(var i = 0; i<this.routesReal[key].path.length; i++){
             var currentStop = this.routesReal[key].path[i][1];
-            for(var j = 0; j<Object.keys(this.stopsReal).length; j++){
-                var stopToEdit = this.stopsReal[Object.keys(this.stopsReal)[j]].id;
+            for(var j = 0; j<this.stopsOrdered.length; j++){
+                var stopToEdit = this.stopsReal[this.stopsOrdered[j]].id;
                 if(stopToEdit === currentStop){
-                    this.stopsReal[Object.keys(this.stopsReal)[j]].routes.push(key);
+                    this.stopsReal[this.stopsOrdered[j]].routes.push(key);
                 }
             }
         }
@@ -258,8 +282,17 @@ function loadStops(){
         }
         renderRoute(key);
     }
+    for(var stop of Object.keys(this.stopsReal)){
+        let stoppe = stopsReal[stop];
+        if(stoppe.long < -75.6 || stoppe.long > -74.3 || stoppe.lat > 40.6 || stoppe.lat < 40.4){
+            delete stopsReal[stop];
+        }
+    }
+    stopsOrdered = Object.keys(stopsReal);
+    stopsOrdered.sort();
     var current = $("#stopsList").find('[class="popupList"]')[0];
-    var keys = Object.keys(this.stopsReal);
+    keys = this.stopsOrdered;
+    console.log(keys);
     var inactiveNames = [];
     for(var inactive of inactiveRoutes){
         inactiveNames.push(inactive.nameOrig);
@@ -276,7 +309,8 @@ function loadStops(){
         current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
         current.lastChild.addEventListener('click', function(){showStopOnMap(keys[i])})
     }
-    for(var stop of Object.keys(stopsReal)){
+    // bounds [-74.6, 40.4], [-74.3, 40.6]
+    for(var stop of this.stopsOrdered){
         if(stopsReal[stop].routes != [])
             renderCircle(stopsReal[stop].routes, stop);
     }
@@ -447,7 +481,7 @@ function renderCircle(routeList, stopName){
 }
 
 function showStopDetails(stopName){
-
+    
 }
 
 function showStopOnMap(stopName){
@@ -529,28 +563,35 @@ const dashArraySequence = [
         
     let step = 0;
         
-    function animateDashArray(timestamp) {
+function animateDashArray(timestamp) {
     // Update line-dasharray using the next value in dashArraySequence. The
     // divisor in the expression `timestamp / 50` controls the animation speed.
     const newStep = parseInt(
-    (timestamp / 50) % dashArraySequence.length
+        (timestamp / 50) % dashArraySequence.length
     );
-        
+
     if (newStep !== step) {
-    for(var mapRoute of this.currentRoutes){
-        map.setPaintProperty(
-            mapRoute,
-            'line-dasharray',
-            dashArraySequence[step]
-        );
+        for (var mapRoute of this.currentRoutes) {
+            map.setPaintProperty(
+                mapRoute,
+                'line-dasharray',
+                dashArraySequence[step]
+            );
+        }
+        step = newStep;
     }
-    step = newStep;
-    }
-        
+
     // Request the next frame of the animation.
     requestAnimationFrame(animateDashArray);
-    }
+}
         
     // start the animation
     animateDashArray(0);
     
+    Array.prototype.removeAt = function (iIndex){
+        var vItem = this[iIndex];
+        if (vItem) {
+            this.splice(iIndex, 1);
+        }
+        return vItem;
+    };
