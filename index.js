@@ -39,6 +39,8 @@ function failure() {
 }
 
 async function initialise() {
+    document.getElementById('busSearch').addEventListener('input', function(event){filterBuses(event.data)});
+    document.getElementById('stopSearch').addEventListener('input', function(event){filterStops(event.data)});
     $.ajaxSetup({
         type: 'POST',
         timeout: 30000,
@@ -142,12 +144,16 @@ function setAlerts(what) {
 function setBuses(what) {
     this.trueSetBuses(what);
     this.bussyDeletion();
+    
 }
 
 function trueSetBuses(what) {
     this.buses = what;
     var busesExclusively = this.buses['buses'];
     var busIds = Object.keys(busesExclusively);
+    for(var routs of Object.keys(this.routesReal)){
+        this.routesReal[routs].active = false;
+    }
     for (var busId of busIds) {
         let currentBus = busesExclusively[busId][0];
         this.busesReal[currentBus['busName']] = {
@@ -163,16 +169,76 @@ function trueSetBuses(what) {
     }
 }
 
-function setBusesFirst(what) {
+function showBusOnMap(which){
+    console.log(which);
+    $("#stopsList").hide();
+    $("#routesList").hide();
+    $("#busesList").hide();
+    console.log(this.busMarkers[which])
+    map.setCenter(this.busesReal[which].position);
+    map.setZoom(16);
+}
+
+async function setBusesFirst(what) {
     this.trueSetBuses(what);
-    this.bussyDeletion();
-    var current = $("#busesList").find('[class="popupList"]')[0]
-    for(let bus of Object.keys(this.busesReal).toSorted()){
-        if(this.busesReal[bus].active){
-            current.append(document.createElement('div'))
-            current.lastChild.className = 'popupItem bus';
-            current.lastChild.id = bus;
-            current.lastChild.innerHTML = bus + " | " + this.busesReal[bus].route
+    await this.bussyDeletion();
+    for(var rout of Object.keys(this.routesReal).toSorted()){
+        this.routesReal[rout].active = (this.routesReal[rout].buses.length > 0);
+        console.log(rout, this.routesReal[rout].buses.length > 0, this.routesReal[rout].active)
+    }
+    var current = $("#busesList").find('[class="popupList"]')[0];
+    for(let rout of Object.keys(this.routesReal).toSorted()){
+        if(this.routesReal[rout].active){
+            this.routesReal[rout].buses.sort();
+            for(let x = 0; x<this.routesReal[rout].buses.length; x++){
+                console.log(x)
+                console.log(this.busesReal[this.routesReal[rout].buses[x]]);
+                if(this.busesReal[this.routesReal[rout].buses[x]].active){
+                    current.append(document.createElement('div'))
+                    current.lastChild.className = this.busItem;
+                    current.lastChild.id = this.routesReal[rout].buses[x];
+                    current.lastChild.innerHTML = this.routesReal[rout].buses[x] + " | " + this.busesReal[this.routesReal[rout].buses[x]].route
+                    let bruh = (this.routesReal[rout].buses[x]);
+                    current.lastChild.addEventListener('click', function(){showBusOnMap(bruh)}.bind(this));
+                }
+            }
+        }
+    }
+    $(document.getElementById('routesList')).find('[class="popupList"]')[0].innerHTML = "";
+    var current = $(document.getElementById('routesList')).find('[class="popupList"]')[0];
+    for(var rout of Object.keys(this.routesReal).toSorted()){
+        if(this.routesReal[rout].active){
+            current.append(document.createElement("div"));
+            current.lastChild.className = routeItem;
+            current.lastChild.id = this.routesReal[rout].full;
+            current.lastChild.innerHTML = this.routesReal[rout].full + " | " + this.routesReal[rout].short.toUpperCase();
+            current.lastChild.append(document.createElement('div'));
+            current.lastChild.lastChild.className = 'routeSelector';
+            let nam = this.routesReal[rout].full;
+            current.lastChild.style.borderColor = this.routesReal[rout].color;
+            let hihi = current.lastChild.lastChild;
+            let hi = current.lastChild;
+            hihi.addEventListener('click', function (e) { selectRoute(nam) }.bind(this));
+            hi.addEventListener("click", function (e) { if (hi === e.target) { showRoute(this.routes[i].nameOrig) } }.bind(this));
+        }
+    }
+    current.append(document.createElement("div"));
+    current.lastChild.className = "popupItem bus";
+    current.lastChild.innerText = "-- Inactive Routes --"
+    for(var rout of Object.keys(this.routesReal).toSorted()){
+        if(!this.routesReal[rout].active){
+            current.append(document.createElement("div"));
+            current.lastChild.className = routeItem;
+            current.lastChild.id = this.routesReal[rout].full;
+            current.lastChild.innerHTML = this.routesReal[rout].full + " | " + this.routesReal[rout].short.toUpperCase();
+            current.lastChild.append(document.createElement('div'));
+            current.lastChild.lastChild.className = 'routeSelector';
+            let nam = this.routesReal[rout].full;
+            current.lastChild.style.borderColor = this.routesReal[rout].color;
+            let hihi = current.lastChild.lastChild;
+            let hi = current.lastChild;
+            hihi.addEventListener('click', function (e) { selectRoute(nam) }.bind(this));
+            hi.addEventListener("click", function (e) { if (hi === e.target) { showRoute(this.routes[i].nameOrig) } }.bind(this));
         }
     }
 }
@@ -181,7 +247,9 @@ function bussyDeletion() {
     var toDelete = [];
     for (let busReal of Object.keys(this.busesReal)) {
         let flag = true;
-        if (Object.keys(this.routesReal).includes(this.busesReal[busReal].route)) {
+        if (Object.keys(this.routesReal).includes(this.busesReal[busReal].route))
+        {
+            this.routesReal[this.busesReal[busReal].route].buses.push(busReal);
             this.routesReal[this.busesReal[busReal].route].active = true;
             this.hasBuses.push(this.busesReal[busReal].route);
             flag = false;
@@ -227,6 +295,9 @@ function closeAll() {
 var busMarkers = {};
 
 function updateBuses() {
+    for (var rout of Object.keys(this.routesReal)){
+        this.routesReal[rout].buses = [];
+    }
     for (var bus of Object.keys(this.busesReal).toSorted()) {
         if (this.busesReal[bus].active || Object.keys(this.routes).includes(busesReal[bus].route)) {
             this.routesReal[busesReal[bus].route].buses.push(bus);
@@ -537,12 +608,13 @@ function fixSizes() {
         }
     }
     for (var marker of document.querySelectorAll('.busMarker')) {
-        marker.setAttribute('style', `height: ${(zoomb * ratio).toString()}px; width: ${(zoomb * busRatio).toString()}px;`)
+        marker.style.height = `${(zoomb * busRatio).toString()}px`;
+        marker.style.width = `${(zoomb * busRatio).toString()}px`;
         $(marker.firstChild).attr('height', (zoomb * busRatio).toString() + "px");
-        $(marker.firstChild).attr('width', (zoomb * busRatio).toString() + "px")
-        $(marker.lastChild).attr('height', (0.8* (zoomb * busRatio)).toString() + "px");
-        $(marker.lastChild).attr('width', (0.8* (zoomb * busRatio)).toString() + "px")
-        marker.lastChild.style.padding = `${0.1*(zoomb * busRatio)}px`
+        $(marker.firstChild).attr('width', (zoomb * busRatio).toString() + "px");
+        marker.lastChild.style.height = (0.8* (zoomb * busRatio)).toString() + "px";
+        marker.lastChild.style.width = (0.8* (zoomb * busRatio)).toString() + "px";
+        marker.lastChild.style.padding = `${0.1*(zoomb * busRatio)}px`;
     }
 }
 
@@ -609,6 +681,50 @@ function showStopOnMap(stopName) {
     $("#routesList").hide();
     map.setCenter([this.stopsReal[stopName].long, this.stopsReal[stopName].lat])
     map.setZoom(16);
+}
+
+function filterBuses(bus){
+    var busess = $($("#busesList").find('[class="popupList"]')[0]).find('div');
+    var bus = document.getElementById('busSearch').value;
+    if(bus===""){
+        for(var item of Object.keys(busess)){
+            if(typeof busess[item] === "object"){
+                $(busess[item]).show();
+            }
+        }
+    } else {
+        for(var item of Object.keys(buses).slice(0, Object.keys(buses).length-4)){
+            if(typeof busess[item] === "object"){
+                if(!stopss[item].innerText.toLowerCase().includes(stop.toLowerCase())){
+                    $(busess[item]).hide();
+                } else{
+                    $(busess[item]).show();
+                }
+            }
+        }
+    }
+}
+
+function filterStops(stop){
+    var stopss = $($("#stopsList").find('[class="popupList"]')[0]).find('div');
+    var stop = document.getElementById('stopSearch').value;
+    if(stop===""){
+        for(var item of Object.keys(stopss)){
+            if(typeof stopss[item] === "object"){
+                $(stopss[item]).show();
+            }
+        }
+    } else {
+        for(var item of Object.keys(stopss).slice(0, Object.keys(stopss).length-4)){
+            if(typeof stopss[item] === "object"){
+                if(!stopss[item].innerText.toLowerCase().includes(stop.toLowerCase())){
+                    $(stopss[item]).hide();
+                } else{
+                    $(stopss[item]).show();
+                }
+            }
+        }
+    }
 }
 
 // --------------------------------------------------------------------------

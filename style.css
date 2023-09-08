@@ -134,5 +134,15 @@ li:hover{
 }
 
 .popupItem.bus{
-    margin: 0.03em;
+    padding: 2%;
+}
+
+input{
+    border: 0.05em;
+    border-style: solid;
+    color: black;
+    padding: 2%;
+    font-size: 3vh;
+    margin: 0.1em;
+    border-radius: 16px;
 }
