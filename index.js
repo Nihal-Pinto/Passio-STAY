@@ -220,6 +220,7 @@ async function setBusesFirst(what) {
             let hi = current.lastChild;
             hihi.addEventListener('click', function (e) { selectRoute(nam) }.bind(this));
             hi.addEventListener("click", function (e) { if (hi === e.target) { showRoute(nam) } }.bind(this));
+            this.renderRoute(this.routesReal[rout].full);
         }
     }
     current.append(document.createElement("div"));
@@ -239,6 +240,7 @@ async function setBusesFirst(what) {
             let hi = current.lastChild;
             hihi.addEventListener('click', function (e) { selectRoute(nam) }.bind(this));
             hi.addEventListener("click", function (e) { if (hi === e.target) { showRoute(nam) } }.bind(this));
+            this.renderRoute(this.routesReal[rout].full)
         }
     }
 }
