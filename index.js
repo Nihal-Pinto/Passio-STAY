@@ -334,7 +334,7 @@ function updateBuses() {
                 this.busMarkers[bus][1] = generateMovement([this.busMarkers[bus][0].getLngLat().lng, this.busMarkers[bus][0].getLngLat().lat], this.busesReal[bus].position);
             }
             this.frame = 0;
-            console.log('joever');
+            console.log('updating');
             schmooveBus(bus, busMarkers[bus][1]);
             document.getElementById("bus" + bus).lastChild.setAttribute('style', `padding: ${0.2 * (zoomb * busRatio)}px; transform: rotate(${this.busesReal[bus].bearing}deg);`);
             ;
@@ -359,7 +359,6 @@ function updateBuses() {
         }
         this.busesReal[bus].pointOnPath = shortInd;
         if(this.busesReal[bus].pointOnPath === 0 && this.busesReal[bus].nextStop[1] === this.routesReal[this.busesReal[bus].route].stopIndices[Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices)[Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices).length - 1]]){
-            console.log(bus);
             this.busesReal[bus].nextStop = [Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices)[0], this.routesReal[this.busesReal[bus].route].stopIndices[0]];
             for(var i = this.busesReal[bus].nextStop[0]; i<this.routesReal[this.busesReal[bus].route].coords.length; i++){
                 let longDist = this.busesReal[bus].position[0] - this.routesReal[this.busesReal[bus].route].coords[i][0];
@@ -747,17 +746,14 @@ function showStopOnMap(stopName) {
 
 function filterBuses(bus) {
     bus = document.getElementById('busSearch').value;
-    console.log(bus);
     var busess = $($("#busesList").find('[class="popupList"]')[0]).find('div');
     if (bus === "") {
-        console.info("search cleared")
         for (var item of Object.keys(busess)) {
             if (typeof busess[item] === "object") {
                 $(busess[item]).show();
             }
         }
     } else {
-        console.info("search starting")
         for (var item of Object.keys(busess).slice(0, Object.keys(busess).length - 4)) {
             if (typeof busess[item] === "object") {
                 if (!busess[item].innerText.toLowerCase().includes(bus.toLowerCase())) {
