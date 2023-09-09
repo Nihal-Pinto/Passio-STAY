@@ -64,6 +64,10 @@ body{
     height: calc(100% - 10vh);
 }
 
+.popupList.withSearch{
+    height: calc(100% - 15vh);
+}
+
 .popupTitle{
     font-size: 4vh;
     text-align: center;

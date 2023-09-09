@@ -183,7 +183,7 @@ async function setBusesFirst(what) {
     for (var rout of Object.keys(this.routesReal).toSorted()) {
         this.routesReal[rout].active = (this.routesReal[rout].buses.length > 0);
     }
-    var current = $("#busesList").find('[class="popupList"]')[0];
+    var current = $("#busesList").find('[class="popupList withSearch"]')[0];
     for (let rout of Object.keys(this.routesReal).toSorted()) {
         if (this.routesReal[rout].active) {
             this.routesReal[rout].buses.sort();
@@ -527,7 +527,8 @@ function loadStops() {
     }
     stopsOrdered = Object.keys(stopsReal);
     stopsOrdered.sort();
-    var current = $("#stopsList").find('[class="popupList"]')[0];
+    var current = $("#stopsList").find('[class="popupList withSearch"]')[0];
+    console.log(current);
     keys = this.stopsOrdered;
     var inactiveNames = [];
     for (var inactive of inactiveRoutes) {
