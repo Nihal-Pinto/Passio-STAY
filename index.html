@@ -1,104 +1,106 @@
 <html>
-    <head>
-        <!--- boilerplate -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">
-        <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
-        <script src="https://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
-        <link id='stylesheet' href="style.css" rel="stylesheet">
-        <!--- mapbox -->
-        <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
-        <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
-        <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
-    </head>
 
-    <body>
-        
-        <div id="status" class="popup" style="z-index: 10";>
-            <h2 class="popupTitle">Loading</h1>
-        </div>
+<head>
+    <!--- boilerplate -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <script src="https://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+    <link id='stylesheet' href="style.css" rel="stylesheet">
+    <!--- mapbox -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+</head>
 
-        <!--- mapbox -->
-        <div id='map' style='width: 100%; height: 100%;'></div>
+<body>
 
-        <script>
+    <div id="status" class="popup" style="z-index: 10" ;>
+        <h2 class="popupTitle">Loading</h1>
+    </div>
+
+    <!--- mapbox -->
+    <div id='map' style='width: 100%; height: 100%;'></div>
+
+    <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoibnBpbnRvLXJ1IiwiYSI6ImNsbHhzc3p4YTIwengza3MyN2dpZHo0MjMifQ.htwTQMFArOxMhPV0vnNpXg';
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/outdoors-v12',
-            maxBounds: new mapboxgl.LngLatBounds([-74.6, 40.4], [-74.3, 40.6]),
+            maxBounds: new mapboxgl.LngLatBounds([-74.6,40.4],[-74.3,40.6]),
             zoom: 10,
-            center: [-74.4496437, 40.4913079]
+            center: [-74.4496437,40.4913079]
         });
-        </script>
+    </script>
 
-        <!--- main -->
-        <div id='logo' style="font-family: Montserrat;">
-            Custom PassioGo Client
+    <!--- main -->
+    <div id='logo' style="font-family: Montserrat;">
+        Custom PassioGo Client
+    </div>
+
+    <div id='controls'>
+        <div id='stopsButton' class='SVGcontainer'>
+            <img src="assets/mapPin.svg" class='SVGicon'></img>
         </div>
-
-        <div id='controls'>
-            <div id='stopsButton' class='SVGcontainer'>
-                <img src="assets/mapPin.svg" class='SVGicon'></img>
-            </div>
-            <div id='busesButton' class='SVGcontainer'>
-                <img src="assets/buses.svg" class='SVGicon'></img>
-            </div>
-            <div id='routesButton' class='SVGcontainer'>
-                <img src="assets/routes.svg" class='SVGicon'></img>
-            </div>
-            <div id='alertsButton' class='SVGcontainer'>
-                <img src="assets/bell.svg" class='SVGicon'></img>
-            </div>
+        <div id='busesButton' class='SVGcontainer'>
+            <img src="assets/buses.svg" class='SVGicon'></img>
         </div>
-
-
-        <!--- popups -->
-        <div id='routesList' class='popup' style='display: none;'>
-            <h3 class='popupTitle'>Routes</h3></br>
-            <div class='x' onclick='$("#routesList").hide()'>
-                <img src="assets/x.svg" class="SVGicon"></img>
-            </div>
-            <div class='popupList'>
-                <!--- routes to fill -->
-            </div>
+        <div id='routesButton' class='SVGcontainer'>
+            <img src="assets/routes.svg" class='SVGicon'></img>
         </div>
-
-        <div id='stopsList' class='popup' style='display: none;'>
-            <h3 class='popupTitle'>Stops</h3></br>
-            <input type="text" placeholder="Stop Name" id="stopSearch">
-            <div class='x' onclick='$("#stopsList").hide()'>
-                <img src="assets/x.svg" class="SVGicon"></img>
-            </div>
-            <div class='popupList withSearch'>
-                <!--- stops to fill -->
-            </div>
+        <div id='alertsButton' class='SVGcontainer'>
+            <img src="assets/bell.svg" class='SVGicon'></img>
         </div>
+    </div>
 
-        <div id='busesList' class='popup' style='display: none;'>
-            <h3 class='popupTitle'>Buses</h3></br>
-            <input type="text" placeholder="Bus Number" id="busSearch">
-            <div class='x' onclick='$("#busesList").hide()'>
-                <img src="assets/x.svg" class="SVGicon"></img>
-            </div>
-            <div class='popupList withSearch'>
-                <!--- buses to fill -->
-            </div>
+
+    <!--- popups -->
+    <div id='routesList' class='popup' style='display: none;'>
+        <h3 class='popupTitle'>Routes</h3></br>
+        <div class='x' onclick='$("#routesList").hide()'>
+            <img src="assets/x.svg" class="SVGicon"></img>
         </div>
-
-        <div id='alertsList' class='popup' style='display: none;'>
-            <div class='x' onclick='$("#alertsList").hide()'>
-                <img src="assets/x.svg" class="SVGicon"></img>
-            </div>
-            <h3 class='popupTitle'>Alerts</h3></br>
-            <div class='popupList'></div>
-                <!--- alerts to fill -->
-            </div>
+        <div class='popupList'>
+            <!--- routes to fill -->
         </div>
+    </div>
 
-        <div id="stopContainer" style="position: absolute;"></div>
+    <div id='stopsList' class='popup' style='display: none;'>
+        <h3 class='popupTitle'>Stops</h3></br>
+        <input type="text" placeholder="Stop Name" id="stopSearch">
+        <div class='x' onclick='$("#stopsList").hide()'>
+            <img src="assets/x.svg" class="SVGicon"></img>
+        </div>
+        <div class='popupList withSearch'>
+            <!--- stops to fill -->
+        </div>
+    </div>
 
-        <script src="index.js" type="text/javascript"></script>
+    <div id='busesList' class='popup' style='display: none;'>
+        <h3 class='popupTitle'>Buses</h3></br>
+        <input type="text" placeholder="Bus Number" id="busSearch">
+        <div class='x' onclick='$("#busesList").hide()'>
+            <img src="assets/x.svg" class="SVGicon"></img>
+        </div>
+        <div class='popupList withSearch'>
+            <!--- buses to fill -->
+        </div>
+    </div>
 
-    </body>
+    <div id='alertsList' class='popup' style='display: none;'>
+        <div class='x' onclick='$("#alertsList").hide()'>
+            <img src="assets/x.svg" class="SVGicon"></img>
+        </div>
+        <h3 class='popupTitle'>Alerts</h3></br>
+        <div class='popupList'></div>
+        <!--- alerts to fill -->
+    </div>
+    </div>
+
+    <div id="stopContainer" style="position: absolute;"></div>
+
+    <script src="index.js" type="text/javascript"></script>
+
+</body>
+
 </html>

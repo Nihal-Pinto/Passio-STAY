@@ -98,20 +98,15 @@ async function initialise() {
             }
             setBusesFirst(JSON.parse(data));
         }).fail(failure.bind(this));
-    await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
-        { json: '{"s0":"1268","sA":1}' },
-        function (data) {
-            setBuses(JSON.parse(data));
-            updateBuses();
-        }).fail(failure.bind(this));
     setInterval(async function () {
         await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
             { json: '{"s0":"1268","sA":1}' },
             function (data) {
                 setBuses(JSON.parse(data));
-                updateBuses();
-            }).fail(failure.bind(this));
+                updateBuses.bind(this).call();
+            }.bind(this)).fail(failure.bind(this));
     }, 10000);
+    setInterval(setETAS(), 300000);
 
     document.getElementById('routesButton').replaceWith(document.getElementById('routesButton').cloneNode(true));
     document.getElementById('stopsButton').replaceWith(document.getElementById('stopsButton').cloneNode(true));
@@ -141,10 +136,9 @@ function setAlerts(what) {
     this.alerts = what;
 }
 
-function setBuses(what) {
-    this.trueSetBuses(what);
-    this.bussyDeletion();
-
+async function setBuses(what) {
+    await this.trueSetBuses(what);
+    await this.bussyDeletion();
 }
 
 function trueSetBuses(what) {
@@ -154,17 +148,32 @@ function trueSetBuses(what) {
     for (var routs of Object.keys(this.routesReal)) {
         this.routesReal[routs].active = false;
     }
-    for (var busId of busIds) {
-        let currentBus = busesExclusively[busId][0];
-        this.busesReal[currentBus['busName']] = {
-            num: currentBus['busName'],
-            route: currentBus['route'],
-            routeId: currentBus['routeId'],
-            active: !Boolean(currentBus['outOfService']),
-            fullness: parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
-            id: currentBus['busId'],
-            position: [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
-            bearing: currentBus['calculatedCourse']
+    try{
+        for (var busId of busIds) {
+            let currentBus = busesExclusively[busId][0];
+            this.busesReal[currentBus['busName']].num = currentBus['busName'],
+            this.busesReal[currentBus['busName']].route = currentBus['route'],
+            this.busesReal[currentBus['busName']].routeId = currentBus['routeId'],
+            this.busesReal[currentBus['busName']].active = !Boolean(currentBus['outOfService']),
+            this.busesReal[currentBus['busName']].fullness = parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
+            this.busesReal[currentBus['busName']].id = currentBus['busId'],
+            this.busesReal[currentBus['busName']].position = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
+            this.busesReal[currentBus['busName']].bearing = currentBus['calculatedCourse']
+        }
+    }
+    catch(e){
+        for (var busId of busIds) {
+            let currentBus = busesExclusively[busId][0];
+            this.busesReal[currentBus['busName']] = {
+                num: currentBus['busName'],
+                route: currentBus['route'],
+                routeId: currentBus['routeId'],
+                active: !Boolean(currentBus['outOfService']),
+                fullness: parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
+                id: currentBus['busId'],
+                position: [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
+                bearing: currentBus['calculatedCourse']
+            }
         }
     }
 }
@@ -342,10 +351,10 @@ function updateBuses() {
     }
     for (var bus of Object.keys(this.busesReal)) {
         var key = this.busesReal[bus].route;
-
+        console.log(this.busesReal[bus])
+        console.log(this.busesReal[bus].nextStop);
         var shortestDist = 1000;
         var shortInd = 0;
-        
         for(var i = this.busesReal[bus].pointOnPath; i<this.busesReal[bus].nextStop[0]; i++){
             let longDist = this.busesReal[bus].position[0] - this.routesReal[this.busesReal[bus].route].coords[i][0];
             let latDist = this.busesReal[bus].position[1] - this.routesReal[this.busesReal[bus].route].coords[i][1];
@@ -405,7 +414,13 @@ function loadRoutes() {
         current.append(document.createElement("div"));
         current.lastChild.className = routeItem;
         current.lastChild.id = this.routes[i].nameOrig;
-        current.lastChild.innerHTML = this.routes[i].nameOrig + " | " + this.routes[i].shortName.toUpperCase();
+        try{
+            current.lastChild.innerHTML = this.routes[i].nameOrig + " | " + this.routes[i].shortName.toUpperCase();
+        } catch(e){
+            if(e instanceof TypeError){
+                current.lastChild.innerHTML = this.routes[i].nameOrig + " | Special Route";
+            }
+        }
         current.lastChild.append(document.createElement('div'));
         current.lastChild.lastChild.className = 'routeSelector';
         let nam = this.routes[i].nameOrig;
@@ -426,6 +441,9 @@ function loadRoutes() {
             active: true,
             color: this.routes[i].color
         };
+        if(this.routesReal[this.routes[i].nameOrig].short === null){
+            this.routesReal[this.routes[i].nameOrig].short = "SP Route";
+        }
     }
     for (let i = 0; i < this.inactiveRoutes.length; i++) {
         current.append(document.createElement("div"));
@@ -452,6 +470,9 @@ function loadRoutes() {
             active: false,
             color: this.inactiveRoutes[i].color
         };
+        if(this.routesReal[this.inactiveRoutes[i].nameOrig].short === null){
+            this.routesReal[this.inactiveRoutes[i].nameOrig].short = "SP Route";
+        }
     };
     for (var el of document.getElementsByClassName('route')) {
         el.onclick = function () {
@@ -528,7 +549,6 @@ function loadStops() {
     stopsOrdered = Object.keys(stopsReal);
     stopsOrdered.sort();
     var current = $("#stopsList").find('[class="popupList withSearch"]')[0];
-    console.log(current);
     keys = this.stopsOrdered;
     var inactiveNames = [];
     for (var inactive of inactiveRoutes) {
@@ -544,7 +564,7 @@ function loadStops() {
             }
         }
         current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
-        current.lastChild.addEventListener('click', function () { showStopOnMap(keys[i]) })
+        $(current.lastChild).on('click', function () { showStopOnMap(`${keys[i]}`) })
     }
     // bounds [-74.6, 40.4], [-74.3, 40.6]
     for (var stop of this.stopsOrdered) {
@@ -691,13 +711,14 @@ function lighten(what) {
 
 function renderRoute(routeName) {
     var newNode = document.getElementById(routeName).appendChild(document.createElement('div'))
-    var inner = "<ol style='font-weight: lighter; font-size: 2.25vh'>\n";
+    var inner = newNode.appendChild(document.createElement('ol'));
+    inner.setAttribute('style', 'font-weight: lighter; font-size: 2.25vh');
     var paath = this.routesReal[routeName].path;
     for (var stop of paath) {
-        inner += `<li onclick='showStopOnMap("${this.stopsHashMap[stop[1]]}")'>` + this.stopsHashMap[stop[1]] + "</li>";
+        inner.appendChild(document.createElement('li'));
+        inner.lastChild.addEventListener('click', function(){showStopOnMap(this.stopsHashMap[stop[1]])}.bind(this));
+        inner.lastChild.innerText = this.stopsHashMap[stop[1]];
     }
-    inner += '</ol>';
-    newNode.innerHTML = inner;
     $(newNode).hide();
 }
 
@@ -791,7 +812,15 @@ function filterStops(stop) {
 }
 
 function getETAS(){
+    $.ajax({
+        method: "GET",
+        url: "https://passiostay-1-j3779931.deta.app/eta",
+        success: setETAS,
+    })
+}
 
+function setETAS(data){
+    
 }
 
 // --------------------------------------------------------------------------
