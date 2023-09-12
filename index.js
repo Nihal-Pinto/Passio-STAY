@@ -375,8 +375,12 @@ function updateBuses() {
         this.routesReal[rout].buses = [];
     }
     for(var bussy of Object.keys(busesReal)){
+        if(!(Object.keys(this.routesReal).includes(this.busesReal[bussy].route))){
+            continue;
+        }
         var shortest = 1000;
         var indi = 0;
+        console.log(busesReal[bussy]);
         for(var i = busesReal[bussy].pointOnPath; i<busesReal[bussy].nextStop[0]; i++){
             if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i])) < shortest){
                 shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i]));
@@ -393,6 +397,9 @@ function updateBuses() {
     }
 
     for (let bus of Object.keys(this.busesReal).toSorted()) {
+        if(!(Object.keys(this.routesReal).includes(this.busesReal[bussy].route))){
+            continue;
+        }
         if (this.busesReal[bus].active && Object.keys(this.routesReal).includes(busesReal[bus].route)) {
             this.routesReal[this.busesReal[bus].route].buses.push(bus);
             if (document.getElementById("bus" + bus) === null) {
