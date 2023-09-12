@@ -31,6 +31,17 @@
             zoom: 10,
             center: [-74.4496437,40.4913079]
         });
+        map.addControl(
+            new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                // When active the map will receive updates to the device's location as it changes.
+                trackUserLocation: true,
+                // Draw an arrow next to the location dot to indicate which direction the device is heading.
+                showUserHeading: true
+            })
+        );
     </script>
 
     <!--- main -->
@@ -97,7 +108,15 @@
     </div>
     </div>
 
-    <div id="stopContainer" style="position: absolute;"></div>
+    <div id="stopContainer" class="popup poppy" style="display: none;">
+        <h3 class='popupTitle'></h3></br>
+        <div class='x' onclick='$("#stopContainer").hide()'>
+            <img src="assets/x.svg" class="SVGicon"></img>
+        </div>
+        <div class='popupList'>
+            <!--- incoming buses to fill -->
+        </div>
+    </div>
 
     <script src="index.js" type="text/javascript"></script>
 

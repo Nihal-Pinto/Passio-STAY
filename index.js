@@ -32,6 +32,8 @@ var errorMessage = "PassioGO! is being slow :)\nIt's still loading.";
 
 function stillLoading() { alert(this.errorMessage) };
 
+var deviceId = (Math.floor(Math.random() * (10 ** 8))).toString()
+
 function failure() {
     $("#status").show();
     this.errorMessage = 'Passio servers dead, ggwp :(';
@@ -53,60 +55,52 @@ async function initialise() {
     document.getElementById('stopsButton').addEventListener('click', stillLoading.bind(tempScope));
     document.getElementById('alertsButton').addEventListener('click', stillLoading.bind(tempScope));
     document.getElementById('busesButton').addEventListener('click', stillLoading.bind(tempScope));
-    var deviceId = (Math.floor(Math.random() * (10 ** 8))).toString()
 
     await $.post("https://passio3.com/www/mapGetData.php?getRoutes=1&deviceId=" + deviceId + "&wTransloc=1",
         { json: '{"systemSelected0":"1268","amount":1}' },
         function (data) {
-            if (Object.keys(JSON.parse(data)) === ['error']) {
+            if (Object.keys(JSON.parse(data)).length === 1) {
                 this.errorMessage = "Passio servers dead, ggwp :(";
                 document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
-                return;
+                throw new Error("Passio Gone")
             }
             setRoutes(JSON.parse(data));
             loadRoutes();
-        }).fail(failure.bind(this));
+        }.bind(this)).fail(failure.bind(this));
     await $.post("https://passio3.com/www/mapGetData.php?getStops=1&deviceId=" + deviceId + "&wTransloc=1",
         { json: '{"s0":"1268","sA":1}' },
         function (data) {
-            if (Object.keys(JSON.parse(data)) === ['error']) {
+            if (Object.keys(JSON.parse(data)).length === 1) {
+                
                 this.errorMessage = "Passio servers dead, ggwp :(";
                 document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
-                return;
+                throw new Error("Passio Gone");
             }
             setStops(JSON.parse(data));
             loadStops();
-        }).fail(failure.bind(this));
+        }.bind(this)).fail(failure.bind(this));
     await $.post("https://passio3.com/www/goServices.php?getAlertMessages=1&deviceId=" + deviceId,
         { json: '{"systemSelected0":"1268", "amount":1}' },
         function (data) {
-            if (Object.keys(JSON.parse(data)) === ['error']) {
+            if (Object.keys(JSON.parse(data)).length === 1) {
+                
                 this.errorMessage = "Passio servers dead, ggwp :(";
                 document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
-                return;
+                throw new Error("Passio Gone");
             }
             setAlerts(JSON.parse(data));
             loadAlerts();
-        }).fail(failure.bind(this));
+        }.bind(this)).fail(failure.bind(this));
     await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
         { json: '{"s0":"1268","sA":1}' },
         function (data) {
-            if (Object.keys(JSON.parse(data)) === ['error']) {
+            if (Object.keys(JSON.parse(data)).length === 1) {
                 this.errorMessage = "Passio servers dead, ggwp :(";
                 document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
-                return;
+                throw new Error("Passio Gone");
             }
-            setBusesFirst(JSON.parse(data));
-        }).fail(failure.bind(this));
-    setInterval(async function () {
-        await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
-            { json: '{"s0":"1268","sA":1}' },
-            function (data) {
-                setBuses(JSON.parse(data));
-                updateBuses.bind(this).call();
-            }.bind(this)).fail(failure.bind(this));
-    }, 10000);
-    setInterval(setETAS(), 300000);
+            setBusesFirst.call(this, JSON.parse(data));
+        }.bind(this)).fail(failure.bind(this));
 
     document.getElementById('routesButton').replaceWith(document.getElementById('routesButton').cloneNode(true));
     document.getElementById('stopsButton').replaceWith(document.getElementById('stopsButton').cloneNode(true));
@@ -136,9 +130,8 @@ function setAlerts(what) {
     this.alerts = what;
 }
 
-async function setBuses(what) {
-    await this.trueSetBuses(what);
-    await this.bussyDeletion();
+function setBuses(what) {
+    this.trueSetBuses.call(this, what);
 }
 
 function trueSetBuses(what) {
@@ -148,32 +141,38 @@ function trueSetBuses(what) {
     for (var routs of Object.keys(this.routesReal)) {
         this.routesReal[routs].active = false;
     }
-    try{
-        for (var busId of busIds) {
-            let currentBus = busesExclusively[busId][0];
-            this.busesReal[currentBus['busName']].num = currentBus['busName'],
-            this.busesReal[currentBus['busName']].route = currentBus['route'],
-            this.busesReal[currentBus['busName']].routeId = currentBus['routeId'],
-            this.busesReal[currentBus['busName']].active = !Boolean(currentBus['outOfService']),
-            this.busesReal[currentBus['busName']].fullness = parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
-            this.busesReal[currentBus['busName']].id = currentBus['busId'],
-            this.busesReal[currentBus['busName']].position = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
-            this.busesReal[currentBus['busName']].bearing = currentBus['calculatedCourse']
-        }
+    var news = busIds.filter((word) => !(Object.keys(this.busesReal).includes(busesExclusively[word][0]['busName'])));
+    var existing = busIds.filter((word) => (Object.keys(this.busesReal).includes(busesExclusively[word][0]['busName'])));
+
+    for (var busId of existing) {   
+        let currentBus = busesExclusively[busId][0];
+        this.busesReal[currentBus['busName']].num = currentBus['busName'];
+        this.busesReal[currentBus['busName']].route = currentBus['route'];
+        this.busesReal[currentBus['busName']].routeId = currentBus['routeId'];
+        this.busesReal[currentBus['busName']].active = !Boolean(currentBus['outOfService']);
+        this.busesReal[currentBus['busName']].fullness = parseInt(currentBus['paxLoad'] / currentBus['totalCap']);
+        this.busesReal[currentBus['busName']].id = currentBus['busId'];
+        var temp1 = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])];
+        var temp2 = this.busesReal[currentBus['busName']].position;
+        var temp3 = turf.lineString([temp1, temp2])
+        var leng = (turf.length(temp3, {units: 'kilometers'})*100);
+        this.busesReal[currentBus['busName']].speed = leng;
+        this.busesReal[currentBus['busName']].position = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])];
+        this.busesReal[currentBus['busName']].bearing = currentBus['calculatedCourse'];
     }
-    catch(e){
-        for (var busId of busIds) {
-            let currentBus = busesExclusively[busId][0];
-            this.busesReal[currentBus['busName']] = {
-                num: currentBus['busName'],
-                route: currentBus['route'],
-                routeId: currentBus['routeId'],
-                active: !Boolean(currentBus['outOfService']),
-                fullness: parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
-                id: currentBus['busId'],
-                position: [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
-                bearing: currentBus['calculatedCourse']
-            }
+    for (var busId of news) {
+        let currentBus = busesExclusively[busId][0];
+        this.busesReal[currentBus['busName']] = {
+            num: currentBus['busName'],
+            route: currentBus['route'],
+            routeId: currentBus['routeId'],
+            active: !Boolean(currentBus['outOfService']),
+            fullness: parseInt(currentBus['paxLoad'] / currentBus['totalCap']),
+            id: currentBus['busId'],
+            position: [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])],
+            bearing: currentBus['calculatedCourse'],
+            speed: 0,
+            ttn: 0
         }
     }
 }
@@ -187,10 +186,23 @@ function showBusOnMap(which) {
 }
 
 async function setBusesFirst(what) {
-    this.trueSetBuses(what);
-    await this.bussyDeletion();
+    this.trueSetBuses.call(this, what);
+    this.bussyDeletion.call(this);
     for (var rout of Object.keys(this.routesReal).toSorted()) {
         this.routesReal[rout].active = (this.routesReal[rout].buses.length > 0);
+    }
+    if(!stopsHaveBuses){
+        for(var key of Object.keys(this.stopsReal)){
+            for(var route of this.stopsReal[key].routes){
+                this.stopsReal[key].buses = this.stopsReal[key].buses.concat(this.routesReal[route].buses)
+            }
+        }
+        this.stopsOrdered = Object.keys(this.stopsReal);
+        this.stopsOrdered.sort();
+        for (var stoppe of this.stopsOrdered) {
+            this.renderCircle.call(this, this.stopsReal[stoppe].routes, stoppe);
+        }
+        stopsHaveBuses = true;
     }
     var current = $("#busesList").find('[class="popupList withSearch"]')[0];
     for (let rout of Object.keys(this.routesReal).toSorted()) {
@@ -207,6 +219,26 @@ async function setBusesFirst(what) {
                 }
             }
         }
+    }
+    stopsOrdered = Object.keys(stopsReal);
+    stopsOrdered.sort();
+    var current = $("#stopsList").find('[class="popupList withSearch"]')[0];
+    keys = this.stopsOrdered;
+    var inactiveNames = [];
+    for (var inactive of inactiveRoutes) {
+        inactiveNames.push(inactive.nameOrig);
+    }
+    for (let i = 0; i < keys.length; i++) {
+        current.append(document.createElement("div"));
+        current.lastChild.className = stopItem;
+        servicedByRoute = "";
+        for (var route of this.stopsReal[keys[i]].routes) {
+            if (this.routesReal[route].active) {
+                servicedByRoute += "| " + route + " |";
+            }
+        }
+        current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
+        $(current.lastChild).on('click', function () { showStopOnMap(`${keys[i]}`) })
     }
     $(document.getElementById('routesList')).find('[class="popupList"]')[0].innerHTML = "";
     var current = $(document.getElementById('routesList')).find('[class="popupList"]')[0];
@@ -247,6 +279,30 @@ async function setBusesFirst(what) {
             this.renderRoute(this.routesReal[rout].full)
         }
     }
+    await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
+        { json: '{"s0":"1268","sA":1}' },
+        function (data) {
+            if (Object.keys(JSON.parse(data)).length === 1) {
+                this.errorMessage = "Passio servers dead, ggwp :(";
+                document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
+                throw new Error("Passio Gone");
+            }
+            this.setBuses.call(this, JSON.parse(data));
+            updateBuses.call(this);
+        }.bind(this)).fail(failure.bind(this));
+    setInterval(async function () {
+        await $.post("https://passio3.com/www/mapGetData.php?getBuses=1&deviceId=" + deviceId + "&wTransloc=1",
+            { json: '{"s0":"1268","sA":1}' },
+            function (data) {
+                if (Object.keys(JSON.parse(data)).length === 1) {
+                    this.errorMessage = "Passio servers dead, ggwp :(";
+                    document.getElementById('status').innerHTML = `<h3 class="popupTitle">Something Went Wrong</h3></br><div class="popupItem"><h3>From Passio Official</h3></br>"${JSON.parse(data)['error']}"</div>`
+                    throw new Error("Passio Gone");
+                }
+                this.setBuses.call(this, JSON.parse(data));
+                updateBuses.call(this);
+            }.bind(this)).fail(failure.bind(this));
+    }, 10000);
 }
 
 function bussyDeletion() {
@@ -255,12 +311,11 @@ function bussyDeletion() {
         let flag = true;
         if (Object.keys(this.routesReal).includes(this.busesReal[busReal].route)) {
             this.routesReal[this.busesReal[busReal].route].buses.push(busReal);
-            this.routesReal[this.busesReal[busReal].route].active = true;
+            this.routesReal[this.busesReal[busReal].route]['active'] = true;
             this.hasBuses.push(this.busesReal[busReal].route);
             this.busesReal[busReal].pointOnPath = 0;
             this.busesReal[busReal].nextStop = [Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices)[Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices).length - 1], this.routesReal[this.busesReal[busReal].route].stopIndices[Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices)[Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices).length - 1]]];
             flag = false;
-            
             var shortestDist = 1000;
             var shortInd = 0;
             for(var i = 0; i<this.routesReal[this.busesReal[busReal].route].coords.length; i++){
@@ -273,8 +328,9 @@ function bussyDeletion() {
             }
             this.busesReal[busReal].pointOnPath = shortInd;
             for(var x = this.busesReal[busReal].pointOnPath; x<this.routesReal[this.busesReal[busReal].route].coords.length; x++){
-                if(x === this.routesReal[this.busesReal[busReal].route].coords[x]){
-                    this.busesReal[busReal].nextStop = x;
+                if(Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices).includes(x)){
+                    this.busesReal[busReal].nextStop = [x.toString, this.routesReal[this.busesReal[busReal].route].stopIndices[x]];
+                    break;
                 }
             }
         }
@@ -282,15 +338,11 @@ function bussyDeletion() {
             toDelete.push(busReal);
         }
     }
-    for (var to of toDelete) {
-        delete this.busesReal[to];
-    }
 }
 
 function setStops(what) {
     this.stops = what;
 }
-
 
 function openStops() {
     closeAll();
@@ -318,13 +370,15 @@ function closeAll() {
 
 var busMarkers = {};
 
+var stopsHaveBuses = false;
+
 function updateBuses() {
     for (var rout of Object.keys(this.routesReal)) {
         this.routesReal[rout].buses = [];
     }
-    for (var bus of Object.keys(this.busesReal).toSorted()) {
-        if (this.busesReal[bus].active || Object.keys(this.routes).includes(busesReal[bus].route)) {
-            this.routesReal[busesReal[bus].route].buses.push(bus);
+    for (let bus of Object.keys(this.busesReal).toSorted()) {
+        if (this.busesReal[bus].active && Object.keys(this.routesReal).includes(busesReal[bus].route)) {
+            this.routesReal[this.busesReal[bus].route].buses.push(bus);
             if (document.getElementById("bus" + bus) === null) {
                 let div = document.createElement('div');
                 div.id = "bus" + bus;
@@ -335,52 +389,42 @@ function updateBuses() {
                 inner += '</svg>\n';
                 inner += `<img style="transform: rotate(${this.busesReal[bus].bearing}deg);" src="assets/busPointer.svg?sanitize=true" height='20px' width='20px'>`
                 div.innerHTML = inner;
-                div.addEventListener('click', function () { showBusDetails(bus) }.bind(this));
+                div.appendChild(document.createElement('div'))
+                div.lastChild.className = 'busDetail';
+                div.lastChild.innerHTML = `<h4>${bus}: ${this.busesReal[bus].route}</h4><ul><li>Next Stop: ${this.busesReal[bus].nextStop[1]}</li><li>Occupancy: ${this.busesReal[bus].fullness}%</li></ul>`
+                div.addEventListener('click', function (e) { console.log(div, e.target); if(e.target === div || Array.from(div.childNodes).includes(e.target)) {showBusDetails(bus)} }.bind(this));
                 busMarkers[bus] = [new mapboxgl.Marker(div), []];
                 busMarkers[bus][0].setLngLat(this.busesReal[bus].position)
                 busMarkers[bus][0].addTo(map);
+                div.lastChild.style.display = "none";
+                div.lastChild.appendChild(document.createElement('div'));
+                div.lastChild.lastChild.className = 'x';
+                div.lastChild.lastChild.innerHTML = "<img src='assets/x.svg' class='SVGicon'></img>"
+                let bruh = div.lastChild.lastChild;
+                console.log(bruh);
+                div.lastChild.lastChild.addEventListener('click', function(e){if(e.target === bruh || Array.from(bruh.childNodes).includes(e.target)){console.log('jaisdf'); div.lastChild.style.display = 'none';}}.bind(this));
             } else {
                 this.busMarkers[bus][1] = generateMovement([this.busMarkers[bus][0].getLngLat().lng, this.busMarkers[bus][0].getLngLat().lat], this.busesReal[bus].position);
+                $($(this.busMarkers[bus][0].getElement().lastChild).find("ul")).find('li')[0].innerText = `Next Stop: ${this.busesReal[bus].nextStop[1]}`;
+                $($(this.busMarkers[bus][0].getElement().lastChild).find("ul")).find('li')[1].innerText = `Occupancy: ${this.busesReal[bus].fullness}%`;
             }
             this.frame = 0;
-            console.log('updating');
             schmooveBus(bus, busMarkers[bus][1]);
-            document.getElementById("bus" + bus).lastChild.setAttribute('style', `padding: ${0.2 * (zoomb * busRatio)}px; transform: rotate(${this.busesReal[bus].bearing}deg);`);
-            ;
+            document.getElementById("bus" + bus).childNodes[2].setAttribute('style', `padding: ${0.2 * (zoomb * busRatio)}px; transform: rotate(${this.busesReal[bus].bearing}deg);`);
         }
     }
     for (var bus of Object.keys(this.busesReal)) {
         var key = this.busesReal[bus].route;
-        console.log(this.busesReal[bus])
-        console.log(this.busesReal[bus].nextStop);
-        var shortestDist = 1000;
-        var shortInd = 0;
-        for(var i = this.busesReal[bus].pointOnPath; i<this.busesReal[bus].nextStop[0]; i++){
-            let longDist = this.busesReal[bus].position[0] - this.routesReal[this.busesReal[bus].route].coords[i][0];
-            let latDist = this.busesReal[bus].position[1] - this.routesReal[this.busesReal[bus].route].coords[i][1];
-            if(Math.sqrt(longDist*longDist + latDist*latDist) < shortestDist){
-                shortInd = i;
-                shortestDist = Math.sqrt(longDist*longDist + latDist*latDist);
-            }
+
+        if(!Object.keys(this.routesReal).includes(key)){
+            continue
         }
-        if(this.shortInd > this.busesReal[bus].nextStop[0]){
-            this.busesReal[bus].nextStop = [shortInd, this.routesReal[this.busesReal[bus].route].stopIndices[this.routesReal[this.busesReal[bus].route].stopIndices.index(this.busesReal[bus].nextStop[0])+1]];
+        bussyDeletion.call(this);
+        if(document.getElementById('stopContainer').style.display !== "none"){
+            this.showStopDetails(document.getElementById('stopContainer').firstElementChild.innerText)
         }
-        this.busesReal[bus].pointOnPath = shortInd;
-        if(this.busesReal[bus].pointOnPath === 0 && this.busesReal[bus].nextStop[1] === this.routesReal[this.busesReal[bus].route].stopIndices[Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices)[Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices).length - 1]]){
-            this.busesReal[bus].nextStop = [Object.keys(this.routesReal[this.busesReal[bus].route].stopIndices)[0], this.routesReal[this.busesReal[bus].route].stopIndices[0]];
-            for(var i = this.busesReal[bus].nextStop[0]; i<this.routesReal[this.busesReal[bus].route].coords.length; i++){
-                let longDist = this.busesReal[bus].position[0] - this.routesReal[this.busesReal[bus].route].coords[i][0];
-                let latDist = this.busesReal[bus].position[1] - this.routesReal[this.busesReal[bus].route].coords[i][1];
-                if(Math.sqrt(longDist*longDist + latDist*latDist) < shortestDist){
-                    shortInd = i;
-                    shortestDist = Math.sqrt(longDist*longDist + latDist*latDist);
-                }
-            }
-            this.busesReal[bus].pointOnPath = shortInd;
-        }
+        this.busesReal[bus].ttn = getETA(this.busesReal[bus].route, this.busesReal[bus].speed, this.busesReal[bus].pointOnPath, this.busesReal[bus].nextStop[0], bus)
     }
-    getETAS();
 }
 
 async function schmooveBus(bus, frames) {
@@ -391,7 +435,8 @@ async function schmooveBus(bus, frames) {
 }
 
 function showBusDetails(which) {
-
+    busMarkers[which][0].getElement().lastChild.style.display = "inline-block";
+    console.log('showing ' + which)
 }
 
 function loadRoutes() {
@@ -491,12 +536,19 @@ function loadStops() {
     };
     keys = Object.keys(this.stops['stops']);
     for (var key of keys) {
+        for(var madeKey of Object.keys(stopsReal)){
+            if(stopsReal.lat == this.stops['stops'][key]['latitude'] && stopsReal.long == this.stops['stops'][key]['longitude']){
+                this.stopsReal[this.stops['stops']]
+            }
+        }
         this.stopsReal[this.stops['stops'][key]['name']] = {
             id: this.stops['stops'][key]['id'],
             lat: parseFloat(this.stops['stops'][key]['latitude']),
             long: parseFloat(this.stops['stops'][key]['longitude']),
             routes: [],
-            full: this.stops['stops'][key]['name']
+            buses: [],
+            full: this.stops['stops'][key]['name'],
+            iAmThisPoint: {}
         }
         this.stopsHashMap[this.stops['stops'][key]['id']] = this.stops['stops'][key]['name'];
     }
@@ -538,6 +590,7 @@ function loadStops() {
                 }
             }
             this.routesReal[key].stopIndices[shortInd] = this.stops['stops']['ID' + stop[1]]['name'];
+            this.stopsReal[this.stops['stops']['ID' + stop[1]]['name']].iAmThisPoint[key] = shortInd;
         }
     }
     for (var stop of Object.keys(this.stopsReal)) {
@@ -546,31 +599,7 @@ function loadStops() {
             delete stopsReal[stop];
         }
     }
-    stopsOrdered = Object.keys(stopsReal);
-    stopsOrdered.sort();
-    var current = $("#stopsList").find('[class="popupList withSearch"]')[0];
-    keys = this.stopsOrdered;
-    var inactiveNames = [];
-    for (var inactive of inactiveRoutes) {
-        inactiveNames.push(inactive.nameOrig);
-    }
-    for (let i = 0; i < keys.length; i++) {
-        current.append(document.createElement("div"));
-        current.lastChild.className = stopItem;
-        servicedByRoute = "";
-        for (var route of this.stopsReal[keys[i]].routes) {
-            if (!(inactiveNames.includes(route))) {
-                servicedByRoute += "| " + route + " |";
-            }
-        }
-        current.lastChild.innerHTML = keys[i] + "</br><p style='font-size: 1.5vh; font-weight: normal;'>" + servicedByRoute + "</p>";
-        $(current.lastChild).on('click', function () { showStopOnMap(`${keys[i]}`) })
-    }
-    // bounds [-74.6, 40.4], [-74.3, 40.6]
-    for (var stop of this.stopsOrdered) {
-        if (stopsReal[stop].routes != [])
-            renderCircle(stopsReal[stop].routes, stop);
-    }
+    
     this.stopsLoaded = true;
 }
 
@@ -607,7 +636,11 @@ function selectRoute(which) {
     }
     displayRoutes();
     for (var bus of Object.keys(this.busesReal)) {
-        document.getElementById("bus" + bus).style.display = "none";
+        try{
+            document.getElementById("bus" + bus).style.display = "none";
+        } catch(e){
+            console.info(e);
+        }
     }
     for (let route of Object.keys(selectedRoutes)) {
         for (var bus of this.routesReal[route].buses) {
@@ -694,9 +727,9 @@ function fixSizes() {
         marker.style.width = `${(zoomb * busRatio).toString()}px`;
         $(marker.firstChild).attr('height', (zoomb * busRatio).toString() + "px");
         $(marker.firstChild).attr('width', (zoomb * busRatio).toString() + "px");
-        marker.lastChild.style.height = (0.8 * (zoomb * busRatio)).toString() + "px";
-        marker.lastChild.style.width = (0.8 * (zoomb * busRatio)).toString() + "px";
-        marker.lastChild.style.padding = `${0.1 * (zoomb * busRatio)}px`;
+        marker.childNodes[2].style.height = (0.8 * (zoomb * busRatio)).toString() + "px";
+        marker.childNodes[2].style.width = (0.8 * (zoomb * busRatio)).toString() + "px";
+        marker.childNodes[2].style.padding = `${0.1 * (zoomb * busRatio)}px`;
     }
 }
 
@@ -714,7 +747,7 @@ function renderRoute(routeName) {
     var inner = newNode.appendChild(document.createElement('ol'));
     inner.setAttribute('style', 'font-weight: lighter; font-size: 2.25vh');
     var paath = this.routesReal[routeName].path;
-    for (var stop of paath) {
+    for (let stop of paath) {
         inner.appendChild(document.createElement('li'));
         inner.lastChild.addEventListener('click', function(){showStopOnMap(this.stopsHashMap[stop[1]])}.bind(this));
         inner.lastChild.innerText = this.stopsHashMap[stop[1]];
@@ -722,31 +755,29 @@ function renderRoute(routeName) {
     $(newNode).hide();
 }
 
+var stopMarkers = []
+
 function renderCircle(routeList, stopName) {
-    let routList = []
-    let inRoutes = []
-    for (var inRoute of this.inactiveRoutes) {
-        inRoutes.push(inRoute.nameOrig)
-    }
-    for (var rout of routeList) {
-        if (inRoutes.includes(rout)) {
-            { }
-        } else {
-            routList.push(rout);
+    let routList = [];
+    let bruhMoment = JSON.parse(JSON.stringify(this.routesReal));
+    for (var routte of routeList) {
+        var hello = bruhMoment[routte].active;
+        if(hello){
+            routList.push(routte);
         }
     }
     let svg = document.createElement('div');
     svg.className = 'stopMarker';
-    svg.id = 'stop: ' + stopName;
+    svg.id = 'stop: ' + stopName;   
     let inner = '';
     if (routList.length > 0) {
         for (var i = 0; i < routList.length; i++) {
-            inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "${routesReal[routList[i]].color}" stroke="#FFFFFF" stroke-width="0.3em">\n`
+            inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "${bruhMoment[routList[i]].color}" stroke="#FFFFFF" stroke-width="0.3em">\n`
             inner += "<path d='" + arc({ x: 0, y: 0, r: 50, start: ((360 / routList.length) * i), end: ((360 / routList.length) * (i + 1)) }) + "'></path>\n";
             inner += '</svg>\n';
         }
     } else {
-        inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "#FFFFFFF" stroke="#FFFFFF" stroke-width="0.3em">\n`
+        inner += `<svg height='20px' width='20px' style="position: absolute;" viewbox="-50 -50 100 100" fill= "#888888" stroke="#FFFFFF" stroke-width="0.3em">\n`
         inner += "<path d='" + arc({ x: 0, y: 0, r: 50 }) + "'></path>\n";
         inner += '</svg>\n';
     }
@@ -756,7 +787,55 @@ function renderCircle(routeList, stopName) {
 }
 
 function showStopDetails(stopName) {
-
+    $("#stopContainer").show();
+    var closestBuses = {};
+    console.log(' ----------------- ')
+    for(var buss of this.stopsReal[stopName].buses){
+        var currentETA = (getETA(this.busesReal[buss].route, this.busesReal[buss].speed, this.busesReal[buss].pointOnPath, this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route], buss)/60);
+        if(currentETA < 1 && currentETA > 0){
+            currentETA = currentETA.toFixed(1);
+        } else if(currentETA == 0){
+            closestBuses[this.busesReal[buss].route] = {
+                timeTill: 0,
+                bus: buss
+            };
+        } else{
+            currentETA = parseInt(currentETA);
+        }
+        if(Object.keys(closestBuses).includes(this.busesReal[buss].route)){
+            if(closestBuses[this.busesReal[buss].route] !== 0){
+                if((this.busesReal[buss].pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route] && closestBuses[this.busesReal[buss].route].bus.pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route]) || (this.busesReal[buss].pointOnPath > this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route] && closestBuses[this.busesReal[buss].route].bus.pointOnPath > this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route])){
+                    if(this.busesReal[buss].pointOnPath > closestBuses[this.busesReal[buss].route].bus.pointOnPath){
+                        closestBuses[this.busesReal[buss].route].timeTill = currentETA;
+                        closestBuses[this.busesReal[buss].route].bus = buss;
+                    }
+                } else if(this.busesReal[buss].pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route]){
+                    closestBuses[this.busesReal[buss].route].timeTill = currentETA;
+                    closestBuses[this.busesReal[buss].route].bus = buss;
+                }
+            }
+        } else{
+            closestBuses[this.busesReal[buss].route] = {
+                timeTill: currentETA,
+                bus: buss
+            }   
+        }
+    }
+    var conty = document.getElementById('stopContainer');
+    $(conty.firstElementChild).html(stopName);
+    conty.lastElementChild.innerHTML = "";
+    console.log(closestBuses)
+    for(let bu of Object.keys(closestBuses)){
+        conty.childNodes[6].appendChild(document.createElement('div'));
+        conty.childNodes[6].lastChild.className = busItem;
+        conty.childNodes[6].lastChild.style.borderColor = this.routesReal[bu].color;
+        if(closestBuses[bu].timeTill == 0){
+            conty.childNodes[6].lastChild.innerText = bu + ": " + closestBuses[bu].bus + " has arrived.";
+        } else{
+            conty.childNodes[6].lastChild.innerText = bu + ": " + closestBuses[bu].bus + " in " + closestBuses[bu].timeTill + " mins @ " + (busesReal[closestBuses[bu].bus].speed*2.23694).toFixed(2) + "mph"
+        }
+        conty.childNodes[6].lastChild.addEventListener('click', function () { showBusOnMap(closestBuses[bu].bus) }.bind(this))
+    }
 }
 
 function showStopOnMap(stopName) {
@@ -767,9 +846,9 @@ function showStopOnMap(stopName) {
 }
 
 function filterBuses(bus) {
-    bus = document.getElementById('busSearch').value;
-    var busess = $($("#busesList").find('[class="popupList"]')[0]).find('div');
-    if (bus === "") {
+    var bussy = document.getElementById('busSearch').value;
+    var busess = $($("#busesList").find('[class="popupList withSearch"]')[0]).find('div');
+    if (bussy === "") {
         for (var item of Object.keys(busess)) {
             if (typeof busess[item] === "object") {
                 $(busess[item]).show();
@@ -778,7 +857,7 @@ function filterBuses(bus) {
     } else {
         for (var item of Object.keys(busess).slice(0, Object.keys(busess).length - 4)) {
             if (typeof busess[item] === "object") {
-                if (!busess[item].innerText.toLowerCase().includes(bus.toLowerCase())) {
+                if (!busess[item].innerText.toLowerCase().includes(bussy.toLowerCase())) {
                     $(busess[item]).hide();
                 } else {
                     $(busess[item]).show();
@@ -790,7 +869,7 @@ function filterBuses(bus) {
 
 function filterStops(stop) {
     stop = document.getElementById('stopSearch').value;
-    var stopss = $($("#stopsList").find('[class="popupList"]')[0]).find('div');
+    var stopss = $($("#stopsList").find('[class="popupList withSearch"]')[0]).find('div');
     var stop = document.getElementById('stopSearch').value;
     if (stop === "") {
         for (var item of Object.keys(stopss)) {
@@ -811,18 +890,31 @@ function filterStops(stop) {
     }
 }
 
-function getETAS(){
-    $.ajax({
-        method: "GET",
-        url: "https://passiostay-1-j3779931.deta.app/eta",
-        success: setETAS,
-    })
-}
+var trafficData = {};
+var allLines = [];
+var madeLines = false;
 
-function setETAS(data){
-    
+function getETA(route, speed, start, end, bus){
+    var toRet;
+    if(start === end){
+        return 0;
+    }
+    if(turf.distance(turf.point(this.routesReal[route].coords[start]), turf.point(this.routesReal[route].coords[end]), {units: 'kilometers'}) < 0.05){
+        return 0;
+    }
+    try{
+        if(end < start){
+            toRet = (turf.length(turf.lineString(this.routesReal[route].coords.slice(start, this.routesReal[route].coords.length-1).concat(this.routesReal[route].coords.slice(0, end))), {units: 'kilometers'})*1000)/speed;
+        } else{
+            toRet = (turf.length(turf.lineString(this.routesReal[route].coords.slice(start, end+1)), {units: 'kilometers'})*1000)/speed;
+        }
+    } catch(e){
+        if(e.message == "coordinates must be an array of two or more positions"){
+            toRet = 0;
+        }
+    }
+    return toRet;
 }
-
 // --------------------------------------------------------------------------
 
 const point = (x, y, r, angel) => [

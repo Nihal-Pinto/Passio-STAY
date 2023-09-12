@@ -10,7 +10,7 @@ body{
     position: absolute;
     top: 0px;
     left: 0px;
-    width: 100%;
+    width: calc(100% - 1.3vh);
     height: 3.7vh;
     font-size: 2vh;
     color: white;
@@ -53,19 +53,18 @@ body{
     top: 5vh;
     left: 25vw;
     width: 50vw;
-    height: 90vh;
+    min-height: 10vh;
+    max-height: 90vh;
     background-color: rgb(50,50,50);
     border-radius: 10px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .popupList{
     overflow-y: auto;
-    height: calc(100% - 10vh);
-}
-
-.popupList.withSearch{
-    height: calc(100% - 15vh);
+    flex-grow: 1;
 }
 
 .popupTitle{
@@ -73,6 +72,7 @@ body{
     text-align: center;
     color: white;
     margin: 1%;
+    flex-grow: 0;
 }
 
 .popupItem{
@@ -102,7 +102,7 @@ body{
     right: 0.25em;
     font-size: 4vh;
     color: white;
-    height: 5%;
+    height: 1.5em;
     aspect-ratio: 1/1;
 }
 
@@ -149,4 +149,38 @@ input{
     font-size: 3vh;
     margin: 0.1em;
     border-radius: 16px;
+}
+
+.busDetail {
+    all: revert;
+    position: absolute;
+    background-color: rgb(50,50,50);
+    border-radius: 10px;
+    aspect-ratio: 3/1;
+    width: auto;
+    box-sizing: border-box;
+}
+
+.busDetail > h4 {
+    font-size: 2em;
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+    margin-top: 5%;
+    margin-bottom: 5%;
+    padding: 15;
+}
+
+.busDetail > ul {
+    all: revert;
+    color: white;
+    white-space: nowrap;
+    padding-right: 50;
+    padding-bottom: 10;
+}
+
+.busDetail > ul > li {
+    all: revert;
+    color: white;
+    white-space: nowrap;
 }
