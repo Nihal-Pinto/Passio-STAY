@@ -319,10 +319,8 @@ function bussyDeletion() {
             var shortestDist = 1000;
             var shortInd = 0;
             for(var i = 0; i<this.routesReal[this.busesReal[busReal].route].coords.length; i++){
-                let latDist = this.busesReal[busReal].position[1] - parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][1]);
-                let longDist = this.busesReal[busReal].position[0] - parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][0]);
-                if (Math.sqrt(latDist * latDist + longDist * longDist) < shortestDist) {
-                    shortestDist = Math.sqrt(latDist * latDist + longDist * longDist);
+                if(turf.distance(turf.point(this.busesReal[busReal].position), turf.point([parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][0])])) < shortestDist){
+                    shortestDist = turf.distance(turf.point(this.busesReal[busReal].position), turf.point([parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[busReal].route].coords[i][0])]));
                     shortInd = i;
                 }
             }
@@ -376,6 +374,24 @@ function updateBuses() {
     for (var rout of Object.keys(this.routesReal)) {
         this.routesReal[rout].buses = [];
     }
+    for(var bussy of Object.keys(busesReal)){
+        var shortest = 1000;
+        var indi = 0;
+        for(var i = busesReal[bussy].pointOnPath; i<busesReal[bussy].nextStop[0]; i++){
+            if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i])) < shortest){
+                shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i]));
+                indi = i;
+            }
+        }
+        this.busesReal[bussy].pointOnPath = indi;
+        for(var i = this.busesReal[bussy].pointOnPath; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++ ){
+            if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(i.toString())){
+                this.busesReal[bussy].nextStop = [i, this.routesReal[this.busesReal[bussy].route].stopIndices[i.toString()]]
+                break;
+            }
+        }
+    }
+
     for (let bus of Object.keys(this.busesReal).toSorted()) {
         if (this.busesReal[bus].active && Object.keys(this.routesReal).includes(busesReal[bus].route)) {
             this.routesReal[this.busesReal[bus].route].buses.push(bus);
@@ -392,7 +408,7 @@ function updateBuses() {
                 div.appendChild(document.createElement('div'))
                 div.lastChild.className = 'busDetail';
                 div.lastChild.innerHTML = `<h4>${bus}: ${this.busesReal[bus].route}</h4><ul><li>Next Stop: ${this.busesReal[bus].nextStop[1]}</li><li>Occupancy: ${this.busesReal[bus].fullness}%</li></ul>`
-                div.addEventListener('click', function (e) { console.log(div, e.target); if(e.target === div || Array.from(div.childNodes).includes(e.target)) {showBusDetails(bus)} }.bind(this));
+                div.addEventListener('click', function (e) { ; if(e.target === div || Array.from(div.childNodes).includes(e.target)) {showBusDetails(bus)} }.bind(this));
                 busMarkers[bus] = [new mapboxgl.Marker(div), []];
                 busMarkers[bus][0].setLngLat(this.busesReal[bus].position)
                 busMarkers[bus][0].addTo(map);
@@ -401,8 +417,7 @@ function updateBuses() {
                 div.lastChild.lastChild.className = 'x';
                 div.lastChild.lastChild.innerHTML = "<img src='assets/x.svg' class='SVGicon'></img>"
                 let bruh = div.lastChild.lastChild;
-                console.log(bruh);
-                div.lastChild.lastChild.addEventListener('click', function(e){if(e.target === bruh || Array.from(bruh.childNodes).includes(e.target)){console.log('jaisdf'); div.lastChild.style.display = 'none';}}.bind(this));
+                div.lastChild.lastChild.addEventListener('click', function(e){if(e.target === bruh || Array.from(bruh.childNodes).includes(e.target)){ div.lastChild.style.display = 'none';}}.bind(this));
             } else {
                 this.busMarkers[bus][1] = generateMovement([this.busMarkers[bus][0].getLngLat().lng, this.busMarkers[bus][0].getLngLat().lat], this.busesReal[bus].position);
                 $($(this.busMarkers[bus][0].getElement().lastChild).find("ul")).find('li')[0].innerText = `Next Stop: ${this.busesReal[bus].nextStop[1]}`;
@@ -419,7 +434,7 @@ function updateBuses() {
         if(!Object.keys(this.routesReal).includes(key)){
             continue
         }
-        bussyDeletion.call(this);
+        
         if(document.getElementById('stopContainer').style.display !== "none"){
             this.showStopDetails(document.getElementById('stopContainer').firstElementChild.innerText)
         }
@@ -436,7 +451,6 @@ async function schmooveBus(bus, frames) {
 
 function showBusDetails(which) {
     busMarkers[which][0].getElement().lastChild.style.display = "inline-block";
-    console.log('showing ' + which)
 }
 
 function loadRoutes() {
@@ -706,7 +720,7 @@ function displayRoutes() {
     this.currentRoutes = Object.keys(this.selectedRoutes);
 }
 
-const ratio = 1.5;
+const ratio = 2;
 const busRatio = 3;
 var zoomb = map.getZoom();
 
@@ -783,13 +797,18 @@ function renderCircle(routeList, stopName) {
     }
     svg.innerHTML = inner;
     svg.addEventListener('click', function () { showStopDetails(stopName) }.bind(this));
-    new mapboxgl.Marker(svg).setLngLat([stopsReal[stopName].long, stopsReal[stopName].lat]).addTo(map);
+    for(var marekr of stopMarkers){
+        if(marekr.getLngLat().lng === stopsReal[stopName].long && marekr.getLngLat().lat === stopsReal[stopName].lat){
+            this.stopMarkers.push(new mapboxgl.Marker(svg).setLngLat([stopsReal[stopName].long + 0.00003, stopsReal[stopName].lat]).addTo(map));
+            return;
+        }
+    }
+    this.stopMarkers.push(new mapboxgl.Marker(svg).setLngLat([stopsReal[stopName].long, stopsReal[stopName].lat]).addTo(map));
 }
 
 function showStopDetails(stopName) {
     $("#stopContainer").show();
     var closestBuses = {};
-    console.log(' ----------------- ')
     for(var buss of this.stopsReal[stopName].buses){
         var currentETA = (getETA(this.busesReal[buss].route, this.busesReal[buss].speed, this.busesReal[buss].pointOnPath, this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route], buss)/60);
         if(currentETA < 1 && currentETA > 0){
@@ -824,7 +843,6 @@ function showStopDetails(stopName) {
     var conty = document.getElementById('stopContainer');
     $(conty.firstElementChild).html(stopName);
     conty.lastElementChild.innerHTML = "";
-    console.log(closestBuses)
     for(let bu of Object.keys(closestBuses)){
         conty.childNodes[6].appendChild(document.createElement('div'));
         conty.childNodes[6].lastChild.className = busItem;
