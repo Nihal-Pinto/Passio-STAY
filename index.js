@@ -303,7 +303,32 @@ async function setBusesFirst(what) {
                 updateBuses.call(this);
             }.bind(this)).fail(failure.bind(this));
     }, 10000);
+    setInterval.call(this, cleanup.bind(this), 10000);
 }
+
+function cleanup(){
+    console.info('cleaning');
+    for(var bussy of Object.keys(busesReal)){
+        if(!(Object.keys(this.routesReal).includes(this.busesReal[bussy].route))){
+            continue;
+        }
+        var shortest = 1000;
+        var indi = 0;
+        for(var i = 0; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++){
+            if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])])) < shortest){
+                shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])]));
+                indi = i;
+            }
+        }
+        for(var x = this.busesReal[bussy].pointOnPath; x<this.routesReal[this.busesReal[bussy].route].coords.length; x++){
+            if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(x)){
+                this.busesReal[bussy].nextStop = [x.toString, this.routesReal[this.busesReal[bussy].route].stopIndices[x]];
+                break;
+            }
+        }
+    }
+}
+
 
 function bussyDeletion() {
     var toDelete = [];
@@ -380,18 +405,35 @@ function updateBuses() {
         }
         var shortest = 1000;
         var indi = 0;
-        console.log(busesReal[bussy]);
-        for(var i = busesReal[bussy].pointOnPath; i<busesReal[bussy].nextStop[0]; i++){
-            if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i])) < shortest){
-                shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i]));
-                indi = i;
+        var final = (Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices)[Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).length-1])
+        if(busesReal[bussy].pointOnPath < final){
+            for(var i = busesReal[bussy].pointOnPath; i<final; i++){
+                if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i])) < shortest){
+                    shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point(this.routesReal[this.busesReal[bussy].route].coords[i]));
+                    indi = i;
+                }
             }
-        }
-        this.busesReal[bussy].pointOnPath = indi;
-        for(var i = this.busesReal[bussy].pointOnPath; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++ ){
-            if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(i.toString())){
-                this.busesReal[bussy].nextStop = [i, this.routesReal[this.busesReal[bussy].route].stopIndices[i.toString()]]
-                break;
+            this.busesReal[bussy].pointOnPath = indi;
+            if(indi < final){
+                for(var i = this.busesReal[bussy].pointOnPath; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++ ){
+                    if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(i.toString())){
+                        this.busesReal[bussy].nextStop = [i, this.routesReal[this.busesReal[bussy].route].stopIndices[i]]
+                        break;
+                    }
+                }
+            }
+        } else{
+            for(var i = 0; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++){
+                if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])])) < shortestDist){
+                    shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])]));
+                    indi = i;
+                }
+            }
+            for(var x = this.busesReal[busReal].pointOnPath; x<this.routesReal[this.busesReal[busReal].route].coords.length; x++){
+                if(Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices).includes(x)){
+                    this.busesReal[busReal].nextStop = [x.toString, this.routesReal[this.busesReal[busReal].route].stopIndices[x]];
+                    break;
+                }
             }
         }
     }
@@ -599,19 +641,41 @@ function loadStops() {
         }
         this.routesReal[key].stopIndices = {};
         renderRoute(key);
-        for (var stop of this.routesReal[key].path) {
-            var shortestDist = 1000;
-            var shortInd = 0;
-            for (var i = 0; i < this.routesReal[key].coords.length; i++) {
-                let latDist = this.stopsReal[this.stops['stops']['ID' + stop[1]]['name']].lat - parseFloat(this.routesReal[key].coords[i][1]);
-                let longDist = this.stopsReal[this.stops['stops']['ID' + stop[1]]['name']].long - parseFloat(this.routesReal[key].coords[i][0]);
-                if (Math.sqrt(latDist * latDist + longDist * longDist) < shortestDist) {
-                    shortestDist = Math.sqrt(latDist * latDist + longDist * longDist);
-                    shortInd = i;
+        var last = 0;
+        for(var stopnum = 0; stopnum < this.routesReal[key].path.length; stopnum++){
+            var shortest = 1000;
+            if(Object.keys(this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint).includes(key)){
+                for(let coord = last; coord<this.routesReal[key].coords.length; coord++){
+                    var currentStop = stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]];
+                    var p1 = turf.point([stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].long, stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].lat])
+                    var p2 = turf.point(this.routesReal[key].coords[coord]);
+                    var dist = turf.distance(p1, p2);
+                    if(dist < shortest){
+                        shortest = dist;
+                        this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint[key + " again"] = coord;
+                        last = coord+0;
+                    }
+                }
+            } else{
+                for(let coord = last; coord<this.routesReal[key].coords.length; coord++){
+                    var currentStop = stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]];
+                    var p1 = turf.point([stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].long, stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].lat])
+                    var p2 = turf.point(this.routesReal[key].coords[coord]);
+                    var dist = turf.distance(p1, p2);
+                    if(dist < shortest){
+                        shortest = dist;
+                        console.log(stopsHashMap[this.routesReal[key].path[stopnum][1]], key, coord)
+                        this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint[key] = coord;
+                        last = coord+0;
+                    }
                 }
             }
-            this.routesReal[key].stopIndices[shortInd] = this.stops['stops']['ID' + stop[1]]['name'];
-            this.stopsReal[this.stops['stops']['ID' + stop[1]]['name']].iAmThisPoint[key] = shortInd;
+        }
+        for(var patte of this.routesReal[key].path){
+            if(Object.keys(this.routesReal[key].stopIndices).includes(stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key])){
+                this.routesReal[key].stopIndices[stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key+" again"]] = stopsHashMap[patte[1]];
+            }
+            this.routesReal[key].stopIndices[stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key]] = stopsHashMap[patte[1]];
         }
     }
     for (var stop of Object.keys(this.stopsReal)) {
