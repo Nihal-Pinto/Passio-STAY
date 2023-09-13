@@ -304,7 +304,7 @@ async function setBusesFirst(what) {
                 updateBuses.call(this);
             }.bind(this)).fail(failure.bind(this));
     }, 10000);
-    setInterval.call(this, cleanup.bind(this), 10000);
+    //setInterval.call(this, cleanup.bind(this), 10000);
 }
 
 function cleanup(){
@@ -637,8 +637,8 @@ function loadStops() {
         var subkeys = Object.keys(this.stops.routePoints);
         for (var subkey of subkeys) {
             if (this.routesReal[key].id == subkey) {
-                for (var point of this.stops.routePoints[subkey]) {
-                    this.routesReal[key].coords.push([point.lng, point.lat]);
+                for (var pointe of this.stops.routePoints[subkey]) {
+                    this.routesReal[key].coords.push([pointe.lng, pointe.lat]);
                 }
             }
         }
@@ -670,7 +670,11 @@ function loadStops() {
                 console.log(actual, i);
                 shortest = drist;
                 last = i;
-                this.stopsReal[actual].iAmThisPoint[key] = i;
+                if(Object.keys(this.stopsReal[actual].iAmThisPoint).includes(key)){
+                    this.stopsReal[actual].iAmThisPoint[key+" again"] = i;
+                } else{
+                    this.stopsReal[actual].iAmThisPoint[key] = i;
+                }
                 hasSauce = true;
             }
         }
@@ -795,16 +799,16 @@ function displayRoutes() {
         })
     }
 
-    this.currentRoutes = Object.keys(this.selectedRoutes);
-    for(var rout of this.currentRoutes){
-        for(var cord = 0; cord<this.routesReal[rout].coords.length; cord++){
-            var dov = document.createElement('div');
-            dov.innerText = cord;
-            dov.id = cord;
-            new mapboxgl.Marker(dov).setLngLat(this.routesReal[rout].coords[cord]).addTo(map)
-            console.log(dov);
-        }
-    }
+    // this.currentRoutes = Object.keys(this.selectedRoutes);
+    // for(var rout of this.currentRoutes){
+    //     for(var cord = 0; cord<this.routesReal[rout].coords.length; cord++){
+    //         var dov = document.createElement('div');
+    //         dov.innerText = cord;
+    //         dov.id = cord;
+    //         new mapboxgl.Marker(dov).setLngLat(this.routesReal[rout].coords[cord]).addTo(map)
+    //         console.log(dov);
+    //     }
+    // }
 }
 
 const ratio = 2;
