@@ -150,12 +150,13 @@ function trueSetBuses(what) {
         this.busesReal[currentBus['busName']].route = currentBus['route'];
         this.busesReal[currentBus['busName']].routeId = currentBus['routeId'];
         this.busesReal[currentBus['busName']].active = !Boolean(currentBus['outOfService']);
-        this.busesReal[currentBus['busName']].fullness = parseInt(currentBus['paxLoad'] / currentBus['totalCap']);
+        this.busesReal[currentBus['busName']].fullness = parseInt(currentBus['paxLoad']*100 / currentBus['totalCap']);
         this.busesReal[currentBus['busName']].id = currentBus['busId'];
         var temp1 = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])];
         var temp2 = this.busesReal[currentBus['busName']].position;
         var temp3 = turf.lineString([temp1, temp2])
-        var leng = (turf.length(temp3, {units: 'kilometers'})*100);
+        console.log(turf.length(temp3, {units: 'kilometers'}).toFixed(1) + "km distance between old and new")
+        var leng = (turf.length(temp3, {units: 'kilometers'})*1000)/10;
         this.busesReal[currentBus['busName']].speed = leng;
         this.busesReal[currentBus['busName']].position = [parseFloat(currentBus['longitude']), parseFloat(currentBus['latitude'])];
         this.busesReal[currentBus['busName']].bearing = currentBus['calculatedCourse'];
@@ -231,7 +232,7 @@ async function setBusesFirst(what) {
     for (let i = 0; i < keys.length; i++) {
         current.append(document.createElement("div"));
         current.lastChild.className = stopItem;
-        servicedByRoute = "";
+        let servicedByRoute = "";
         for (var route of this.stopsReal[keys[i]].routes) {
             if (this.routesReal[route].active) {
                 servicedByRoute += "| " + route + " |";
@@ -307,7 +308,6 @@ async function setBusesFirst(what) {
 }
 
 function cleanup(){
-    console.info('cleaning');
     for(var bussy of Object.keys(busesReal)){
         if(!(Object.keys(this.routesReal).includes(this.busesReal[bussy].route))){
             continue;
@@ -320,7 +320,8 @@ function cleanup(){
                 indi = i;
             }
         }
-        for(var x = this.busesReal[bussy].pointOnPath; x<this.routesReal[this.busesReal[bussy].route].coords.length; x++){
+        this.busesReal[bussy].pointOnPath = indi;
+        for(var x = indi; x<this.routesReal[this.busesReal[bussy].route].coords.length; x++){
             if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(x)){
                 this.busesReal[bussy].nextStop = [x.toString, this.routesReal[this.busesReal[bussy].route].stopIndices[x]];
                 break;
@@ -424,14 +425,14 @@ function updateBuses() {
             }
         } else{
             for(var i = 0; i<this.routesReal[this.busesReal[bussy].route].coords.length; i++){
-                if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])])) < shortestDist){
+                if(turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])])) < shortest){
                     shortest = turf.distance(turf.point(this.busesReal[bussy].position), turf.point([parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][1]), parseFloat(this.routesReal[this.busesReal[bussy].route].coords[i][0])]));
                     indi = i;
                 }
             }
-            for(var x = this.busesReal[busReal].pointOnPath; x<this.routesReal[this.busesReal[busReal].route].coords.length; x++){
-                if(Object.keys(this.routesReal[this.busesReal[busReal].route].stopIndices).includes(x)){
-                    this.busesReal[busReal].nextStop = [x.toString, this.routesReal[this.busesReal[busReal].route].stopIndices[x]];
+            for(var x = this.busesReal[bussy].pointOnPath; x<this.routesReal[this.busesReal[bussy].route].coords.length; x++){
+                if(Object.keys(this.routesReal[this.busesReal[bussy].route].stopIndices).includes(x)){
+                    this.busesReal[bussy].nextStop = [x.toString, this.routesReal[this.busesReal[bussy].route].stopIndices[x]];
                     break;
                 }
             }
@@ -630,6 +631,7 @@ function loadStops() {
         }
     }
     keys = Object.keys(this.routesReal);
+    console.info(Date.now());
     for (var key of keys) {
         var subkeys = Object.keys(this.stops.routePoints);
         for (var subkey of subkeys) {
@@ -641,43 +643,19 @@ function loadStops() {
         }
         this.routesReal[key].stopIndices = {};
         renderRoute(key);
-        var last = 0;
-        for(var stopnum = 0; stopnum < this.routesReal[key].path.length; stopnum++){
-            var shortest = 1000;
-            if(Object.keys(this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint).includes(key)){
-                for(let coord = last; coord<this.routesReal[key].coords.length; coord++){
-                    var currentStop = stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]];
-                    var p1 = turf.point([stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].long, stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].lat])
-                    var p2 = turf.point(this.routesReal[key].coords[coord]);
-                    var dist = turf.distance(p1, p2);
-                    if(dist < shortest){
-                        shortest = dist;
-                        this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint[key + " again"] = coord;
-                        last = coord+0;
-                    }
-                }
-            } else{
-                for(let coord = last; coord<this.routesReal[key].coords.length; coord++){
-                    var currentStop = stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]];
-                    var p1 = turf.point([stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].long, stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].lat])
-                    var p2 = turf.point(this.routesReal[key].coords[coord]);
-                    var dist = turf.distance(p1, p2);
-                    if(dist < shortest){
-                        shortest = dist;
-                        console.log(stopsHashMap[this.routesReal[key].path[stopnum][1]], key, coord)
-                        this.stopsReal[stopsHashMap[this.routesReal[key].path[stopnum][1]]].iAmThisPoint[key] = coord;
-                        last = coord+0;
-                    }
-                }
-            }
-        }
-        for(var patte of this.routesReal[key].path){
-            if(Object.keys(this.routesReal[key].stopIndices).includes(stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key])){
-                this.routesReal[key].stopIndices[stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key+" again"]] = stopsHashMap[patte[1]];
-            }
-            this.routesReal[key].stopIndices[stopsReal[stopsHashMap[patte[1]]].iAmThisPoint[key]] = stopsHashMap[patte[1]];
+    }
+    var last = 0;
+    var shortest = Infinity;
+    var stopNum = 0;
+    var flag = false;
+    for(var key of Object.keys(this.routesReal)){
+        for(var stoppe of this.routesReal[key].path){
+            var actual = stopsHashMap[stoppe[1]];
+            console.log(actual);
         }
     }
+    console.log(this.stopsReal)
+    console.log(Date.now());
     for (var stop of Object.keys(this.stopsReal)) {
         let stoppe = stopsReal[stop];
         if (stoppe.long < -75.6 || stoppe.long > -74.3 || stoppe.lat > 40.6 || stoppe.lat < 40.4) {
@@ -788,7 +766,17 @@ function displayRoutes() {
             }
         })
     }
+
     this.currentRoutes = Object.keys(this.selectedRoutes);
+    for(var rout of this.currentRoutes){
+        for(var cord = 0; cord<this.routesReal[rout].coords.length; cord++){
+            var dov = document.createElement('div');
+            dov.innerText = cord;
+            dov.id = cord;
+            new mapboxgl.Marker(dov).setLngLat(this.routesReal[rout].coords[cord]).addTo(map)
+            console.log(dov);
+        }
+    }
 }
 
 const ratio = 2;
@@ -880,35 +868,27 @@ function renderCircle(routeList, stopName) {
 function showStopDetails(stopName) {
     $("#stopContainer").show();
     var closestBuses = {};
-    for(var buss of this.stopsReal[stopName].buses){
-        var currentETA = (getETA(this.busesReal[buss].route, this.busesReal[buss].speed, this.busesReal[buss].pointOnPath, this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route], buss)/60);
-        if(currentETA < 1 && currentETA > 0){
-            currentETA = currentETA.toFixed(1);
-        } else if(currentETA == 0){
-            closestBuses[this.busesReal[buss].route] = {
-                timeTill: 0,
-                bus: buss
+    for(var rout of this.stopsReal[stopName].routes){
+        var stobbe = this.stopsReal[stopName].iAmThisPoint[rout];
+        if(this.routesReal[rout].buses.length > 0){
+            closestBuses[rout] = {
+                timeTill: getETA(rout, this.busesReal[this.routesReal[rout].buses[0]].speed, this.busesReal[this.routesReal[rout].buses[0]].pointOnPath, stobbe, this.routesReal[rout].buses[0]).toFixed(1),
+                bus: this.routesReal[rout].buses[0],
             };
-        } else{
-            currentETA = parseInt(currentETA);
-        }
-        if(Object.keys(closestBuses).includes(this.busesReal[buss].route)){
-            if(closestBuses[this.busesReal[buss].route] !== 0){
-                if((this.busesReal[buss].pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route] && closestBuses[this.busesReal[buss].route].bus.pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route]) || (this.busesReal[buss].pointOnPath > this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route] && closestBuses[this.busesReal[buss].route].bus.pointOnPath > this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route])){
-                    if(this.busesReal[buss].pointOnPath > closestBuses[this.busesReal[buss].route].bus.pointOnPath){
-                        closestBuses[this.busesReal[buss].route].timeTill = currentETA;
-                        closestBuses[this.busesReal[buss].route].bus = buss;
+            for(var bussy of this.routesReal[rout].buses){
+                var oldde = this.busesReal[closestBuses[rout].bus].pointOnPath;
+                var newwe = this.busesReal[bussy].pointOnPath;
+                if((oldde < stobbe && newwe < stobbe) || (oldde > stobbe && newwe > stobbe)){
+                    if(newwe > oldde){
+                        console.log('I S')
+                        closestBuses[rout].timeTill = getETA(rout, this.busesReal[bussy].speed, newwe, stobbe, bussy).toFixed(1);
+                        closestBuses[rout].bus = bussy;
                     }
-                } else if(this.busesReal[buss].pointOnPath < this.stopsReal[stopName].iAmThisPoint[this.busesReal[buss].route]){
-                    closestBuses[this.busesReal[buss].route].timeTill = currentETA;
-                    closestBuses[this.busesReal[buss].route].bus = buss;
+                } else if(oldde > stobbe && newwe < stobbe){
+                    closestBuses[rout].timeTill = getETA(rout, this.busesReal[bussy].speed, newwe, stobbe, bussy).toFixed(1);
+                    closestBuses[rout].bus = bussy;
                 }
             }
-        } else{
-            closestBuses[this.busesReal[buss].route] = {
-                timeTill: currentETA,
-                bus: buss
-            }   
         }
     }
     var conty = document.getElementById('stopContainer');
@@ -921,7 +901,7 @@ function showStopDetails(stopName) {
         if(closestBuses[bu].timeTill == 0){
             conty.childNodes[6].lastChild.innerText = bu + ": " + closestBuses[bu].bus + " has arrived.";
         } else{
-            conty.childNodes[6].lastChild.innerText = bu + ": " + closestBuses[bu].bus + " in " + closestBuses[bu].timeTill + " mins @ " + (busesReal[closestBuses[bu].bus].speed*2.23694).toFixed(2) + "mph"
+            conty.childNodes[6].lastChild.innerText = bu + ": " + closestBuses[bu].bus + " in " + (closestBuses[bu].timeTill/60).toFixed(1) + " mins @ " + (busesReal[closestBuses[bu].bus].speed*2.23694).toFixed(2) + "mph"
         }
         conty.childNodes[6].lastChild.addEventListener('click', function () { showBusOnMap(closestBuses[bu].bus) }.bind(this))
     }
@@ -988,6 +968,7 @@ function getETA(route, speed, start, end, bus){
     if(start === end){
         return 0;
     }
+    console.log(turf.distance(turf.point(this.routesReal[route].coords[start]), turf.point(this.routesReal[route].coords[end]), {units: 'kilometers'}).toFixed(1) + "km distance betweeen start and stop of bus "+ bus+'points: ' + start + " " + end);
     if(turf.distance(turf.point(this.routesReal[route].coords[start]), turf.point(this.routesReal[route].coords[end]), {units: 'kilometers'}) < 0.05){
         return 0;
     }
