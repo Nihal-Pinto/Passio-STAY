@@ -488,6 +488,7 @@ function updateBuses() {
         if(document.getElementById('stopContainer').style.display !== "none"){
             this.showStopDetails(document.getElementById('stopContainer').firstElementChild.innerText)
         }
+        console.log(this.busesReal[bus].route)
         this.busesReal[bus].ttn = getETA(this.busesReal[bus].route, this.busesReal[bus].speed, this.busesReal[bus].pointOnPath, this.busesReal[bus].nextStop[0], bus)
     }
 }
@@ -647,14 +648,41 @@ function loadStops() {
     var last = 0;
     var shortest = Infinity;
     var stopNum = 0;
-    var flag = false;
     for(var key of Object.keys(this.routesReal)){
         for(var stoppe of this.routesReal[key].path){
             var actual = stopsHashMap[stoppe[1]];
-            console.log(actual);
+            var hasSauce = false;
+            var stobbe = turf.point([this.stopsReal[actual].long, this.stopsReal[actual].lat]);
+            for(var i = last; i < this.routesReal[key].coords.length; i++){
+                var cPoint = turf.point(this.routesReal[key].coords[i]);
+                var drist = turf.distance(stobbe, cPoint, {units: "kilometers"});
+                if(drist > 0.15){
+                    if(hasSauce){
+                        shortest = Infinity;
+                        hasSauce = false;
+                        break;
+                    }
+                    continue;
+                }
+                if(shortest < drist){
+                    continue;
+                }
+                console.log(actual, i);
+                shortest = drist;
+                last = i;
+                this.stopsReal[actual].iAmThisPoint[key] = i;
+                hasSauce = true;
+            }
+        }
+        last = 0;
+        shortest = Infinity;
+        console.log(key)
+        for(var stoop of this.routesReal[key].path){
+            var stooop = stopsHashMap[stoop[1]];
+            this.routesReal[key].stopIndices[this.stopsReal[stooop].iAmThisPoint[key]] = stooop;
         }
     }
-    console.log(this.stopsReal)
+    console.log(this.routesReal);
     console.log(Date.now());
     for (var stop of Object.keys(this.stopsReal)) {
         let stoppe = stopsReal[stop];
